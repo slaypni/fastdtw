@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-import bisect
+from collections import defaultdict
 
 from six.moves import xrange
-from collections import defaultdict
 
 
 def fastdtw(x, y, radius=1, dist=lambda a, b: abs(a - b)):
