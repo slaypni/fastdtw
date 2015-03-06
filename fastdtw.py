@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+import bisect
+
+from six.moves import xrange
+import numpy as np
+
+
+def fastdtw(x, y, radius=1, dist=lambda a, b: abs(a - b)):
+    min_time_size = radius + 2
+
+    if len(x) < min_time_size or len(y) < min_time_size:
+        return dtw(x, y, dist=dist)
+
+    x_shrinked = __reduce_by_half(x)
+    y_shrinked = __reduce_by_half(y)
+    distance, path = fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
+    window = __expand_window(path, len(x), len(y), radius)
+    return dtw(x, y, window, dist=dist)
+
+
+def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
+    len_x, len_y = len(x), len(y)
+    if window is None:
+        window = [(i, j) for i in xrange(len_x) for j in xrange(len_y)]
+    window = [(i + 1, j + 1) for i, j in window]
+    D = np.full((len_x+1, len_y+1), np.inf, dtype=('f4, i4, i4'))
+    D[0, 0] = (0, 0, 0)
+    for i, j in window:
+        D[i, j] = min((D[i-1, j][0], i-1, j), (D[i, j-1][0], i, j-1), (D[i-1, j-1][0], i-1, j-1), key=lambda a: a[0])
+        D[i, j][0] += dist(x[i-1], y[j-1])
+    path = []
+    i, j = len_x, len_y
+    while not (i == j == 0):
+        path.append((i-1, j-1))
+        i, j = D[i, j][1], D[i, j][2]
+    path.reverse()
+    return (D[len_x, len_y][0], path)
+
+
+def __reduce_by_half(x):
+    return [(x[i//2] + x[1+i//2]) / 2 for i in range(0, len(x), 2)]
+
+
+def __expand_window(path, len_x, len_y, radius):
+    path_ = set(path)
+    window_ = []
+    for i, j in path:
+        for a, b in ((i + a, j + b) for a in xrange(-radius, radius+1) for b in xrange(-radius, radius+1)):
+            path_.add((a, b))
+                
+    for i, j in path_:
+        for a, b in ((i * 2, j * 2), (i * 2, j * 2 + 1), (i * 2 + 1, j * 2), (i * 2 + 1, j * 2 + 1)):
+            if 0 <= a < len_x and 0 <= b < len_y:
+                bisect.insort(window_, (a, b))
+
+    return window_
