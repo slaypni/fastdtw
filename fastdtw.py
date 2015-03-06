@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import bisect
 
 from six.moves import xrange
-import numpy as np
+from collections import defaultdict
 
 
 def fastdtw(x, y, radius=1, dist=lambda a, b: abs(a - b)):
@@ -26,10 +26,10 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
     if window is None:
         window = [(i, j) for i in xrange(len_x) for j in xrange(len_y)]
     window = [(i + 1, j + 1) for i, j in window]
-    D = np.full((len_x+1, len_y+1), np.inf, dtype=('f4, i4, i4'))
-    D[0, 0] = (0, 0, 0)
+    D = defaultdict(lambda: [float('inf')])
+    D[0, 0] = [0, 0, 0]
     for i, j in window:
-        D[i, j] = min((D[i-1, j][0], i-1, j), (D[i, j-1][0], i, j-1), (D[i-1, j-1][0], i-1, j-1), key=lambda a: a[0])
+        D[i, j] = min([D[i-1, j][0], i-1, j], [D[i, j-1][0], i, j-1], [D[i-1, j-1][0], i-1, j-1], key=lambda a: a[0])
         D[i, j][0] += dist(x[i-1], y[j-1])
     path = []
     i, j = len_x, len_y
@@ -41,19 +41,31 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
 
 
 def __reduce_by_half(x):
-    return [(x[i//2] + x[1+i//2]) / 2 for i in range(0, len(x), 2)]
+    return [(x[i//2] + x[1+i//2]) / 2 for i in xrange(0, len(x), 2)]
 
 
 def __expand_window(path, len_x, len_y, radius):
     path_ = set(path)
-    window_ = []
     for i, j in path:
         for a, b in ((i + a, j + b) for a in xrange(-radius, radius+1) for b in xrange(-radius, radius+1)):
             path_.add((a, b))
-                
+
+    window_ = set()
     for i, j in path_:
         for a, b in ((i * 2, j * 2), (i * 2, j * 2 + 1), (i * 2 + 1, j * 2), (i * 2 + 1, j * 2 + 1)):
-            if 0 <= a < len_x and 0 <= b < len_y:
-                bisect.insort(window_, (a, b))
+            window_.add((a, b))
 
-    return window_
+    window = []
+    start_j = 0
+    for i in xrange(0, len_x):
+        new_start_j = None
+        for j in xrange(start_j, len_y):
+            if (i, j) in window_:
+                window.append((i, j))
+                if new_start_j is None:
+                    new_start_j = j
+            elif new_start_j is not None:
+                break
+        start_j = new_start_j
+
+    return window
