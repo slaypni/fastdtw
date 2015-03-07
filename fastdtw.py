@@ -24,12 +24,12 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in xrange(len_x) for j in xrange(len_y)]
-    window = [(i + 1, j + 1) for i, j in window]
-    D = defaultdict(lambda: [float('inf')])
-    D[0, 0] = [0, 0, 0]
+    window = ((i + 1, j + 1) for i, j in window)
+    D = defaultdict(lambda: (float('inf'),))
+    D[0, 0] = (0, 0, 0)
     for i, j in window:
-        D[i, j] = min([D[i-1, j][0], i-1, j], [D[i, j-1][0], i, j-1], [D[i-1, j-1][0], i-1, j-1], key=lambda a: a[0])
-        D[i, j][0] += dist(x[i-1], y[j-1])
+        dt = dist(x[i-1], y[j-1])
+        D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1), (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
     i, j = len_x, len_y
     while not (i == j == 0):
