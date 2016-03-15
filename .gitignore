@@ -1,4 +1,5 @@
 .env
 *.pyc
+.python-version
 dist
 fastdtw.egg-info
