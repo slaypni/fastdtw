@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division
+
 from collections import defaultdict
 
 from six.moves import xrange
@@ -29,7 +30,8 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
     D[0, 0] = (0, 0, 0)
     for i, j in window:
         dt = dist(x[i-1], y[j-1])
-        D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1), (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
+        D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
+                      (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
     i, j = len_x, len_y
     while not (i == j == 0):
@@ -46,12 +48,15 @@ def __reduce_by_half(x):
 def __expand_window(path, len_x, len_y, radius):
     path_ = set(path)
     for i, j in path:
-        for a, b in ((i + a, j + b) for a in xrange(-radius, radius+1) for b in xrange(-radius, radius+1)):
+        for a, b in ((i + a, j + b)
+                     for a in xrange(-radius, radius+1)
+                     for b in xrange(-radius, radius+1)):
             path_.add((a, b))
 
     window_ = set()
     for i, j in path_:
-        for a, b in ((i * 2, j * 2), (i * 2, j * 2 + 1), (i * 2 + 1, j * 2), (i * 2 + 1, j * 2 + 1)):
+        for a, b in ((i * 2, j * 2), (i * 2, j * 2 + 1),
+                     (i * 2 + 1, j * 2), (i * 2 + 1, j * 2 + 1)):
             window_.add((a, b))
 
     window = []
