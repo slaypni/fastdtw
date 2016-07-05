@@ -9,14 +9,14 @@ classifiers = [
 ]
 
 setup(
-    name = 'fastdtw',
-    version = '0.2.1',
-    author = 'Kazuaki Tanida',
-    url = 'https://github.com/slaypni/fastdtw',
-    description = 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
-    license = 'MIT',
-    keywords = ['dtw'],
-    py_modules = ['fastdtw'],
-    install_requires = ['six'],
-    classifiers = classifiers
+    name='fastdtw',
+    version='0.2.2',
+    author='Kazuaki Tanida',
+    url='https://github.com/slaypni/fastdtw',
+    description='Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
+    license='MIT',
+    keywords=['dtw'],
+    py_modules=['fastdtw'],
+    install_requires=['six'],
+    classifiers=classifiers
 )
