@@ -42,7 +42,7 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
 
 
 def __reduce_by_half(x):
-    return [(x[i//2] + x[1+i//2]) / 2 for i in xrange(0, len(x), 2)]
+    return [(x[i] + x[1+i]) / 2 for i in xrange(0, len(x) - len(x) % 2, 2)]
 
 
 def __expand_window(path, len_x, len_y, radius):
