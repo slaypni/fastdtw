@@ -3,3 +3,6 @@
 .python-version
 dist
 fastdtw.egg-info
+build
+*.so
+*.html
