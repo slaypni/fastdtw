@@ -41,6 +41,11 @@ class FastdtwTest(unittest.TestCase):
         self.assertAlmostEqual(distance_c, ((1+1)**0.5)*2)
         self.assertEqual(distance_c, distance_p)
 
+    def test_2d_pnorm(self):
+        distance_c = fastdtw_c(self.x_2d, self.y_2d, dist=2)[0]
+        distance_p = fastdtw_p(self.x_2d, self.y_2d, dist=2)[0]
+        self.assertAlmostEqual(distance_c, ((1+1)**0.5)*2)
+        self.assertEqual(distance_c, distance_p)
 
 if __name__ == '__main__':
     unittest.main()

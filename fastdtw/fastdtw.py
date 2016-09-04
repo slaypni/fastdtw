@@ -35,8 +35,10 @@ def fastdtw(x, y, radius=1, dist=None):
 
         Returns
         -------
-        float
+        distance : float
             the approximate distance between the 2 time series
+        path : list 
+            list of indexes for the inputs x and y
 
         Examples
         --------
@@ -47,21 +49,7 @@ def fastdtw(x, y, radius=1, dist=None):
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-
-    if not isinstance(x, np.ndarray):
-        x = np.array(x)
-    if not isinstance(y, np.ndarray):
-        y = np.array(y)
-    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
-        raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist <= 0:
-        raise ValueError('dist cannot be a negative integer')
-
-    if dist is None:
-        dist = __difference
-    elif isinstance(dist, numbers.Number):
-        dist = __norm(p=dist)
-
+    x, y, dist = __prep_inputs(x, y, dist)
     return __fastdtw(x, y, radius, dist)
 
 
@@ -87,7 +75,24 @@ def __fastdtw(x, y, radius, dist):
     return dtw(x, y, window, dist=dist)
 
 
-def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
+def __prep_inputs(x, y, dist):
+    x = np.asanyarray(x, dtype='float')
+    y = np.asanyarray(y, dtype='float')
+
+    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
+        raise ValueError('second dimension of x and y must be the same')
+    if isinstance(dist, numbers.Number) and dist <= 0:
+        raise ValueError('dist cannot be a negative integer')
+
+    if dist is None:
+        dist = __difference
+    elif isinstance(dist, numbers.Number):
+        dist = __norm(p=dist)
+
+    return x, y, dist
+
+
+def dtw(x, y, window=None, dist=None):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -101,8 +106,10 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
 
         Returns
         -------
-        float
+        distance : float
             the approximate distance between the 2 time series
+        path : list 
+            list of indexes for the inputs x and y
 
         Examples
         --------
@@ -113,7 +120,7 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-
+    x, y, dist = __prep_inputs(x, y, dist)
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
