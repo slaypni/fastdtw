@@ -97,10 +97,7 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
         y : array_like
             input array 2
         dist : function or int
-            The method for calculating the distance between x[i] and y[j]. If
-            dist is an int of value p > 0, then the p-norm will be used. If
-            dist is a function then dist(x[i], y[j]) will be used. If dist is
-            None then abs(x[i] - y[j]) will be used.
+            The method for calculating the distance between x[i] and y[j].
 
         Returns
         -------
