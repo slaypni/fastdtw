@@ -1,8 +1,11 @@
-.env
-*.pyc
+__pycache__/
+.cache/
+.eggs/
+fastdtw.egg-info/
+.env/
+dist/
+build/
 .python-version
-dist
-fastdtw.egg-info
-build
+*.pyc
 *.so
 *.html

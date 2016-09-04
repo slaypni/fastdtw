@@ -1,5 +1,4 @@
 try:
     from ._fastdtw import fastdtw, dtw
-except ImportError: 
-    # user has been warned on installation
+except ImportError:
     from .fastdtw import fastdtw, dtw

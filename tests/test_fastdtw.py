@@ -7,14 +7,15 @@ import unittest
 
 import numpy as np
 
-from fastdtw._fastdtw import dtw as dtw_c
+import fastdtw._fastdtw
+import fastdtw.fastdtw
 from fastdtw._fastdtw import fastdtw as fastdtw_c
-
-from fastdtw.fastdtw import dtw as dtw_p
+from fastdtw._fastdtw import dtw as dtw_c
 from fastdtw.fastdtw import fastdtw as fastdtw_p
+from fastdtw.fastdtw import dtw as dtw_p
+
 
 class FastdtwTest(unittest.TestCase):
-
     def setUp(self):
         self.x_1d = [1, 2, 3, 4, 5]
         self.y_1d = [2, 3, 4]
@@ -43,4 +44,3 @@ class FastdtwTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

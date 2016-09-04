@@ -5,7 +5,7 @@ from __future__ import absolute_import, division
 import numpy as np
 import numbers
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Free  # noqa
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.math cimport INFINITY, pow, fabs
 from libcpp.vector cimport vector
 
@@ -37,7 +37,7 @@ def fastdtw(x, y, int radius=1, dist=None):
         radius : int
             size of neighborhood when expanding the path. A higher value will
             increase the accuracy of the calculation but also increase time
-            and memory complexity. A radius equal to the size of x and y will
+            and memory consumption. A radius equal to the size of x and y will
             yield an exact dynamic time warping calculation.
         dist : function or int
             The method for calculating the distance between x[i] and y[j]. If
@@ -54,8 +54,8 @@ def fastdtw(x, y, int radius=1, dist=None):
         --------
         >>> import numpy as np
         >>> import fastdtw
-        >>> x = np.array([1, 2, 3, 4, 5.0])
-        >>> y = np.array([2, 3, 4.0])
+        >>> x = np.array([1, 2, 3, 4, 5], dtype='float')
+        >>> y = np.array([2, 3, 4], dtype='float')
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
 
@@ -66,34 +66,34 @@ def fastdtw(x, y, int radius=1, dist=None):
                subtype of np.float
             2) The dist input is a positive integer or None
     '''
+
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
+        raise ValueError('second dimension of x and y must be the same')
     if isinstance(dist, numbers.Number) and dist <= 0:
         raise ValueError('dist cannot be a negative integer')
-    elif (isinstance(x, np.ndarray) and
-          isinstance(y, np.ndarray) and
-          x.ndim > 1 and y.ndim > 1 and
-          x.shape[1] != y.shape[1]):
-
-        raise ValueError('x and y must have the same width')
 
     # passing by reference to recursive functions apparently doesn't work
     # so we are passing pointers
-    cdef PathElement *path = (  # noqa
-        <PathElement *>PyMem_Malloc((len(x) + len(y) - 1) *  # noqa
+    cdef PathElement *path = (
+        <PathElement *>PyMem_Malloc((len(x) + len(y) - 1) *
                                     sizeof(PathElement)))
     cdef int path_len = 0, i
     cost = __fastdtw(x, y, radius, dist, path, path_len)
 
     path_lst = []
     if path != NULL:
-        path_lst = [(path[i].x_idx, path[i].y_idx)
-                    for i in range(path_len)]
+        path_lst = [(path[i].x_idx, path[i].y_idx) for i in range(path_len)]
         PyMem_Free(path)
 
     return cost, path_lst
 
 
 cdef double __fastdtw(x, y, int radius, dist,
-                      PathElement *path, int &path_len):  # noqa
+                      PathElement *path, int &path_len) except? -1:
     cdef int min_time_size
     cdef double cost
 
@@ -101,8 +101,8 @@ cdef double __fastdtw(x, y, int radius, dist,
 
     if len(x) < min_time_size or len(y) < min_time_size:
         cost, path_lst = dtw(x, y, dist=dist)
-        (&path_len)[0] = len(path_lst)  # noqa
-        for i in range((&path_len)[0]):  # noqa
+        (&path_len)[0] = len(path_lst)
+        for i in range((&path_len)[0]):
             path[i].x_idx = path_lst[i][0]
             path[i].y_idx = path_lst[i][1]
 
@@ -141,8 +141,8 @@ def dtw(x, y, dist=None):
         --------
         >>> import numpy as np
         >>> import fastdtw
-        >>> x_1d = np.array([1, 2, 3, 4, 5.0])
-        >>> y_1d = np.array([2, 3, 4.0])
+        >>> x = np.array([1, 2, 3, 4, 5], dtype='float')
+        >>> y = np.array([2, 3, 4], dtype='float')
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
 
@@ -190,8 +190,8 @@ def dtw(x, y, dist=None):
             window[idx] = we
             idx += 1
 
-    cdef PathElement *path = (  # noqa
-        <PathElement *>PyMem_Malloc(  # noqa
+    cdef PathElement *path = (
+        <PathElement *>PyMem_Malloc(
             (len(x) + len(y) - 1) * sizeof(PathElement)))
 
     cdef int path_len = 0
@@ -206,19 +206,16 @@ def dtw(x, y, dist=None):
     return cost, path_lst
 
 
-cdef inline double manhattan(double a, double b):
+cdef inline double __difference(double a, double b):
     return fabs(a - b)
 
 
-def __create_linalg_norm(p):
-    def f(a, b):
-        return np.linalg.norm(a - b, p)
-
-    return f
+def __norm(p):
+    return lambda a, b: np.linalg.norm(a - b, p)
 
 
-cdef double __dtw(x, y, vector[WindowElement] &window, dist,  # noqa
-                  PathElement *path, int &path_len):  # noqa
+cdef double __dtw(x, y, vector[WindowElement] &window, dist,
+                  PathElement *path, int &path_len) except? -1:
     ''' calculate the distance between 2 time series where the path between 2
         time series can only be in window.
     '''
@@ -257,9 +254,9 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,  # noqa
 
     if not use_1d and not use_2d:
         if dist is None:
-            dist = manhattan
+            dist = __difference
         elif pnorm > 0:
-            dist = __create_linalg_norm(pnorm)
+            dist = __norm(pnorm)
 
     # loop over the window. Note from __expand_window that if we loop over its
     # indices we will in effect be looping over each row
@@ -304,12 +301,12 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,  # noqa
 
     # recreate the path
     idx = cost_len - 1
-    (&path_len)[0] = 0  # noqa
+    (&path_len)[0] = 0
     while idx != 0:
         we = window[idx - 1]
         path[path_len].x_idx = we.x_idx
         path[path_len].y_idx = we.y_idx
-        (&path_len)[0] += 1  # noqa
+        (&path_len)[0] += 1
         idx = cost[idx].prev_idx
 
     # reverse path
@@ -333,9 +330,9 @@ cdef __reduce_by_half(x):
         return [(x[i] + x[1+i]) / 2 for i in range(0, len(x) - len(x) % 2, 2)]
 
 
-cdef __expand_window(PathElement *path, int path_len,  # noqa
+cdef __expand_window(PathElement *path, int path_len,
                      x, y, int radius, dist,
-                     vector[WindowElement] &window):  # noqa
+                     vector[WindowElement] &window):
     ''' calculate a window around a path where the expansion is of length
         radius in all directions (including diagonals).
 

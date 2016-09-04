@@ -9,7 +9,7 @@ from collections import defaultdict
 try:
     range = xrange
 except NameError:
-    pass  # Got range() in Py3
+    pass
 
 
 def fastdtw(x, y, radius=1, dist=None):
@@ -25,7 +25,7 @@ def fastdtw(x, y, radius=1, dist=None):
         radius : int
             size of neighborhood when expanding the path. A higher value will
             increase the accuracy of the calculation but also increase time
-            and memory complexity. A radius equal to the size of x and y will
+            and memory consumption. A radius equal to the size of x and y will
             yield an exact dynamic time warping calculation.
         dist : function or int
             The method for calculating the distance between x[i] and y[j]. If
@@ -42,37 +42,35 @@ def fastdtw(x, y, radius=1, dist=None):
         --------
         >>> import numpy as np
         >>> import fastdtw
-        >>> x = np.array([1, 2, 3, 4, 5.0])
-        >>> y = np.array([2, 3, 4.0])
+        >>> x = np.array([1, 2, 3, 4, 5], dtype='float')
+        >>> y = np.array([2, 3, 4], dtype='float')
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
 
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
+        raise ValueError('second dimension of x and y must be the same')
     if isinstance(dist, numbers.Number) and dist <= 0:
         raise ValueError('dist cannot be a negative integer')
-    elif (isinstance(x, np.ndarray) and
-          isinstance(y, np.ndarray) and
-          x.ndim > 1 and y.ndim > 1 and
-          x.shape[1] != y.shape[1]):
-
-        raise ValueError('x and y must have the same width')
 
     if dist is None:
-        dist = manhattan
+        dist = __difference
     elif isinstance(dist, numbers.Number):
-        dist = __create_linalg_norm(dist)
+        dist = __norm(p=dist)
 
     return __fastdtw(x, y, radius, dist)
 
 
-def manhattan(a, b):
+def __difference(a, b):
     return abs(a - b)
 
 
-def __create_linalg_norm(p):
-    def f(a, b):
-        return np.linalg.norm(a - b, p)
-    return f
+def __norm(p):
+    return lambda a, b: np.linalg.norm(a - b, p)
 
 
 def __fastdtw(x, y, radius, dist):
@@ -113,11 +111,12 @@ def dtw(x, y, window=None, dist=lambda a, b: abs(a - b)):
         --------
         >>> import numpy as np
         >>> import fastdtw
-        >>> x_1d = np.array([1, 2, 3, 4, 5.0])
-        >>> y_1d = np.array([2, 3, 4.0])
+        >>> x = np.array([1, 2, 3, 4, 5], dtype='float')
+        >>> y = np.array([2, 3, 4], dtype='float')
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
+
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
