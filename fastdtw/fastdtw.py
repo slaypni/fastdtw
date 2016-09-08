@@ -37,7 +37,7 @@ def fastdtw(x, y, radius=1, dist=None):
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list 
+        path : list
             list of indexes for the inputs x and y
 
         Examples
@@ -72,7 +72,7 @@ def __fastdtw(x, y, radius, dist):
     distance, path = \
         __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
     window = __expand_window(path, len(x), len(y), radius)
-    return dtw(x, y, window, dist=dist)
+    return __dtw(x, y, window, dist=dist)
 
 
 def __prep_inputs(x, y, dist):
@@ -92,7 +92,7 @@ def __prep_inputs(x, y, dist):
     return x, y, dist
 
 
-def dtw(x, y, window=None, dist=None):
+def dtw(x, y, dist=None):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -102,13 +102,16 @@ def dtw(x, y, window=None, dist=None):
         y : array_like
             input array 2
         dist : function or int
-            The method for calculating the distance between x[i] and y[j].
+            The method for calculating the distance between x[i] and y[j]. If
+            dist is an int of value p > 0, then the p-norm will be used. If
+            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            None then abs(x[i] - y[j]) will be used.
 
         Returns
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list 
+        path : list
             list of indexes for the inputs x and y
 
         Examples
@@ -121,6 +124,10 @@ def dtw(x, y, window=None, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
+    return __dtw(x, y, None, dist)
+
+
+def __dtw(x, y, window, dist):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
