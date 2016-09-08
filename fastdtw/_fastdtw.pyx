@@ -49,7 +49,7 @@ def fastdtw(x, y, int radius=1, dist=None):
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list 
+        path : list
             list of indexes for the inputs x and y
 
         Examples
@@ -130,7 +130,7 @@ def dtw(x, y, dist=None):
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list 
+        path : list
             list of indexes for the inputs x and y
 
         Examples
@@ -210,7 +210,8 @@ cdef inline double __difference(double a, double b):
 def __norm(p):
     return lambda a, b: np.linalg.norm(a - b, p)
 
-cdef __prep_inputs(x, y, dist):
+
+def __prep_inputs(x, y, dist):
     x = np.asanyarray(x, dtype='float')
     y = np.asanyarray(y, dtype='float')
 
@@ -219,7 +220,7 @@ cdef __prep_inputs(x, y, dist):
     if isinstance(dist, numbers.Number) and dist <= 0:
         raise ValueError('dist cannot be a negative integer')
 
-    return x, y 
+    return x, y
 
 
 cdef double __dtw(x, y, vector[WindowElement] &window, dist,
