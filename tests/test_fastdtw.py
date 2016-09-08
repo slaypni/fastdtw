@@ -7,8 +7,6 @@ import unittest
 
 import numpy as np
 
-import fastdtw._fastdtw
-import fastdtw.fastdtw
 from fastdtw._fastdtw import fastdtw as fastdtw_c
 from fastdtw._fastdtw import dtw as dtw_c
 from fastdtw.fastdtw import fastdtw as fastdtw_p
