@@ -47,8 +47,10 @@ def fastdtw(x, y, int radius=1, dist=None):
 
         Returns
         -------
-        float
+        distance : float
             the approximate distance between the 2 time series
+        path : list 
+            list of indexes for the inputs x and y
 
         Examples
         --------
@@ -66,15 +68,7 @@ def fastdtw(x, y, int radius=1, dist=None):
                subtype of np.float
             2) The dist input is a positive integer or None
     '''
-
-    if not isinstance(x, np.ndarray):
-        x = np.array(x)
-    if not isinstance(y, np.ndarray):
-        y = np.array(y)
-    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
-        raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist <= 0:
-        raise ValueError('dist cannot be a negative integer')
+    x, y = __prep_inputs(x, y, dist)
 
     # passing by reference to recursive functions apparently doesn't work
     # so we are passing pointers
@@ -134,8 +128,10 @@ def dtw(x, y, dist=None):
 
         Returns
         -------
-        float
+        distance : float
             the approximate distance between the 2 time series
+        path : list 
+            list of indexes for the inputs x and y
 
         Examples
         --------
@@ -156,6 +152,7 @@ def dtw(x, y, dist=None):
 
     cdef int len_x, len_y, x_idx, y_idx, idx
     cdef double cost
+    x, y = __prep_inputs(x, y, dist)
     len_x, len_y = len(x), len(y)
     idx = 0
     cdef WindowElement we
@@ -212,6 +209,17 @@ cdef inline double __difference(double a, double b):
 
 def __norm(p):
     return lambda a, b: np.linalg.norm(a - b, p)
+
+cdef __prep_inputs(x, y, dist):
+    x = np.asanyarray(x, dtype='float')
+    y = np.asanyarray(y, dtype='float')
+
+    if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
+        raise ValueError('second dimension of x and y must be the same')
+    if isinstance(dist, numbers.Number) and dist <= 0:
+        raise ValueError('dist cannot be a negative integer')
+
+    return x, y 
 
 
 cdef double __dtw(x, y, vector[WindowElement] &window, dist,
