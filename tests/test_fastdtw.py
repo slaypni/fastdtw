@@ -45,5 +45,15 @@ class FastdtwTest(unittest.TestCase):
         self.assertAlmostEqual(distance_c, ((1+1)**0.5)*2)
         self.assertEqual(distance_c, distance_p)
 
+    def test_default_dist(self):
+
+        d1 = fastdtw_c([[1,2]], [[2,2],[1,1]], dist=1)[0]
+        d2 = fastdtw_c([[1,2]], [[2,2],[1,1]])[0]
+        d3 = fastdtw_p([[1,2]], [[2,2],[1,1]], dist=1)[0]
+        d4 = fastdtw_p([[1,2]], [[2,2],[1,1]])[0]
+        self.assertEqual(d1, d2)
+        self.assertEqual(d1, d3)
+        self.assertEqual(d1, d4)
+
 if __name__ == '__main__':
     unittest.main()
