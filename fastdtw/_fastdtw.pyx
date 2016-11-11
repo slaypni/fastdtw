@@ -252,10 +252,14 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
          np.issubdtype(y.dtype, np.float))):
 
         if x.ndim == 1:
+            if dist is None:
+                pnorm = 1
             use_1d = 1
             x_arr1d = x
             y_arr1d = y
         elif x.ndim == 2:
+            if dist is None:
+                pnorm = 1
             use_2d = 1
             x_arr2d = x
             y_arr2d = y

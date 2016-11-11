@@ -85,7 +85,10 @@ def __prep_inputs(x, y, dist):
         raise ValueError('dist cannot be a negative integer')
 
     if dist is None:
-        dist = __difference
+        if x.ndim == 1:
+            dist = __difference
+        else: 
+            dist = __norm(p=1)
     elif isinstance(dist, numbers.Number):
         dist = __norm(p=dist)
 
