@@ -2,12 +2,19 @@
 #cython: boundscheck=False, cdivision=True, wraparound=False
 
 from __future__ import absolute_import, division
-import numpy as np
+
 import numbers
 
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.math cimport INFINITY, pow, fabs
+from libc.math cimport pow, fabs
 from libcpp.vector cimport vector
+
+import numpy as np
+
+try:
+  from libc.math cimport INFINITY
+except:
+  from numpy.math cimport INFINITY
 
 
 cdef struct LowHigh:
