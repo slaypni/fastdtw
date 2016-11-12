@@ -42,7 +42,7 @@ if USE_CYTHON:
 
 kwargs = {
     'name': 'fastdtw',
-    'version': '0.2.2',
+    'version': '0.3.0',
     'author': 'Kazuaki Tanida',
     'url': 'https://github.com/slaypni/fastdtw',
     'description': 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
@@ -56,7 +56,6 @@ kwargs = {
     'tests_require': ['pytest'],
     'classifiers': classifiers
 }
-
 
 try:
     setup(**kwargs)
