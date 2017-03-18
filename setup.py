@@ -2,6 +2,7 @@ import os.path
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 import warnings
+import numpy #could not find numpy headers fix
 
 try:
     from Cython.Build import cythonize
@@ -33,7 +34,7 @@ extensions = [Extension(
         'fastdtw._fastdtw',
         [os.path.join('fastdtw', '_fastdtw' + ext)],
         language="c++",
-        include_dirs=[],
+        include_dirs=[numpy.get_include()], #could not find numpy headers fix
         libraries=["stdc++"]
     )]
 
