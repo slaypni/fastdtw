@@ -9,6 +9,17 @@ try:
 except ImportError:
     USE_CYTHON = False
 
+#numpy path is needed for building with and without cython:
+try:
+    import numpy
+    numpy_includes=[numpy.get_include()]
+    HAVE_NUMPY = True
+except ImportError:
+    # "python setup.py build" will not work and trigger fallback to slow pure python later on, 
+    # but "python setup.py clean" will be successful with the first call of setup(...)
+    numpy_includes=[] 
+    HAVE_NUMPY = False
+
 classifiers = [
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 3',
@@ -33,7 +44,7 @@ extensions = [Extension(
         'fastdtw._fastdtw',
         [os.path.join('fastdtw', '_fastdtw' + ext)],
         language="c++",
-        include_dirs=[],
+        include_dirs=numpy_includes,
         libraries=["stdc++"]
     )]
 
@@ -61,5 +72,6 @@ try:
     setup(**kwargs)
 except SystemExit:
     del kwargs['ext_modules']
-    warnings.warn('compilation failed. Installing pure python package')
+    reason = 'numpy missing, ' if not HAVE_NUMPY else ''
+    warnings.warn(reason+'compilation failed. Installing pure python package')
     setup(**kwargs)
