@@ -57,7 +57,7 @@ with open(os.path.join(dir_path, 'README.rst')) as f:
 
 kwargs = {
     'name': 'fastdtw',
-    'version': '0.3.1',
+    'version': '0.3.2',
     'author': 'Kazuaki Tanida',
     'url': 'https://github.com/slaypni/fastdtw',
     'description': 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
