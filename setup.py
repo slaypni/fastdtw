@@ -51,12 +51,17 @@ extensions = [Extension(
 if USE_CYTHON:
     extensions = cythonize(extensions)
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+with open(os.path.join(dir_path, 'README.rst')) as f:
+    long_description = f.read()
+
 kwargs = {
     'name': 'fastdtw',
     'version': '0.3.1',
     'author': 'Kazuaki Tanida',
     'url': 'https://github.com/slaypni/fastdtw',
     'description': 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
+    'long_description': long_description,
     'license': 'MIT',
     'keywords': ['dtw'],
     'install_requires': ['numpy'],
