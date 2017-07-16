@@ -9,15 +9,15 @@ try:
 except ImportError:
     USE_CYTHON = False
 
-#numpy path is needed for building with and without cython:
+# numpy path is needed for building with and without cython:
 try:
     import numpy
-    numpy_includes=[numpy.get_include()]
+    numpy_includes = [numpy.get_include()]
     HAVE_NUMPY = True
 except ImportError:
-    # "python setup.py build" will not work and trigger fallback to slow pure python later on, 
+    # "python setup.py build" will not work and trigger fallback to pure python later on,
     # but "python setup.py clean" will be successful with the first call of setup(...)
-    numpy_includes=[] 
+    numpy_includes = []
     HAVE_NUMPY = False
 
 classifiers = [
@@ -53,7 +53,7 @@ if USE_CYTHON:
 
 kwargs = {
     'name': 'fastdtw',
-    'version': '0.3.0',
+    'version': '0.3.1',
     'author': 'Kazuaki Tanida',
     'url': 'https://github.com/slaypni/fastdtw',
     'description': 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
