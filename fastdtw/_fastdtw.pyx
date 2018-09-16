@@ -255,8 +255,8 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
     cdef double pnorm = -1.0 if not isinstance(dist, numbers.Number) else dist
     if ((dist is None or pnorm > 0) and
         (isinstance(x, np.ndarray) and isinstance(y, np.ndarray) and
-         np.issubdtype(x.dtype, np.float) and
-         np.issubdtype(y.dtype, np.float))):
+         np.issubdtype(x.dtype, np.floating) and
+         np.issubdtype(y.dtype, np.floating))):
 
         if x.ndim == 1:
             if dist is None:
