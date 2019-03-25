@@ -53,6 +53,14 @@ def fastdtw(x, y, radius=1, dist=None):
     return __fastdtw(x, y, radius, dist)
 
 
+def fastdtw_subsequence(x, y, radius=1, dist=None):
+    """
+    like fastdtw but assumes that x is significantly shorter than y and performs partial alignment
+    """
+    x, y, dist = __prep_inputs(x, y, dist)
+    return __fastdtw(x, y, radius, dist, subsequence=True)
+
+
 def __difference(a, b):
     return abs(a - b)
 
@@ -61,17 +69,19 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(a - b, p)
 
 
-def __fastdtw(x, y, radius, dist):
+def __fastdtw(x, y, radius, dist, subsequence=False):
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
-        return dtw(x, y, dist=dist)
+        return dtw(x, y, dist=dist, subsequence=subsequence)
 
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
     distance, path = \
-        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
+        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist, subsequence=subsequence)
     window = __expand_window(path, len(x), len(y), radius)
+    if subsequence:
+        return __dtw_subsequence(x, y, window, dist=dist)
     return __dtw(x, y, window, dist=dist)
 
 
@@ -95,7 +105,7 @@ def __prep_inputs(x, y, dist):
     return x, y, dist
 
 
-def dtw(x, y, dist=None):
+def dtw(x, y, dist=None, subsequence=False):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -127,6 +137,8 @@ def dtw(x, y, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
+    if subsequence:
+        return __dtw_subsequence(x, y, None, dist)
     return __dtw(x, y, None, dist)
 
 
@@ -148,6 +160,30 @@ def __dtw(x, y, window, dist):
         i, j = D[i, j][1], D[i, j][2]
     path.reverse()
     return (D[len_x, len_y][0], path)
+
+
+def __dtw_subsequence(x, y, window, dist):
+    len_x, len_y = len(x), len(y)
+    if window is None:
+        window = [(i, j) for i in range(len_x) for j in range(len_y)]
+    window = ((i + 1, j + 1) for i, j in window)
+    D = defaultdict(lambda: (float('inf'),))
+    for j in range(len_y+1):
+        D[0, j] = (0, 0, 0)
+    for i, j in window:
+        dt = dist(x[i-1], y[j-1])
+        D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
+                      (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
+    path = []
+
+    j_list = [D[len_x, j] for j in range(len_y+1)]
+    i, j = len_x, min(j_list, key=lambda a: a[0])[2]
+    end_j = j
+    while not (i == 0):
+        path.append((i-1, j-1))
+        i, j = D[i, j][1], D[i, j][2]
+    path.reverse()
+    return (D[len_x, end_j][0], path)
 
 
 def __reduce_by_half(x):
