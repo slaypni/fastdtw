@@ -177,7 +177,7 @@ def __dtw_subsequence(x, y, window, dist):
     path = []
 
     j_list = [D[len_x, j] for j in range(len_y+1)]
-    i, j = len_x, min(j_list, key=lambda a: a[0])[2]
+    i, j = len_x, min(j_list, key=lambda a: a[0])[2] + 1
     end_j = j
     while not (i == 0):
         path.append((i-1, j-1))
