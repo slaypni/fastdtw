@@ -58,7 +58,6 @@ def fastdtw(x, y, int radius=1, dist=None):
             the approximate distance between the 2 time series
         path : list
             list of indexes for the inputs x and y
-
         Examples
         --------
         >>> import numpy as np
@@ -91,6 +90,165 @@ def fastdtw(x, y, int radius=1, dist=None):
         PyMem_Free(path)
 
     return cost, path_lst
+
+
+def fastdtw_worker_(X, int radius=1, dist=None, indices_list=None):
+    ''' allow the partial calculation of pairwise comparisons in the parallel
+        computing setting.
+
+         Parameters
+        ----------
+        X : array
+            matrix with all time series that should be compared.
+        radius : int
+            size of neighborhood when expanding the path. A higher value will
+            increase the accuracy of the calculation but also increase time
+            and memory consumption. A radius equal to the size of x and y will
+            yield an exact dynamic time warping calculation.
+        dist : function or int
+            The method for calculating the distance between x[i] and y[j]. If
+            dist is an int of value p > 0, then the p-norm will be used. If
+            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            None then abs(x[i] - y[j]) will be used.
+        indices_list : array, optional, default: None
+            indices that have to be calculated by this worker
+
+        Returns
+        -------
+        dist_mat : array
+            matrix of all pairwise approximate distances
+        path : list
+            list of indexes for the inputs x and y for each pairwise comparison.
+    '''
+    paths_list = []
+    dist_mat = np.zeros((X.shape[0], X.shape[0]))
+    for row, column in indices_list:
+        cost, path_lst = fastdtw(X[row][~np.isnan(X[row])], X[column][~np.isnan(X[column])], radius, dist)
+        dist_mat[row, column] = cost
+        paths_list.append(path_lst)
+
+    return dist_mat, paths_list
+
+
+def fastdtw_parallel(X, int radius=1, dist=None, n_jobs=-1):
+    ''' return the approximate distance between N time series of the NxM matrix
+        while using parallel computation
+
+        Parameters
+        ----------
+        X : array
+            NxM matrix with all N time series that should be compared, having
+            M time points each. In case the time series have different lengths,
+            the remaining values can be padded with np.nan values.
+        radius : int
+            size of neighborhood when expanding the path. A higher value will
+            increase the accuracy of the calculation but also increase time
+            and memory consumption. A radius equal to the size of x and y will
+            yield an exact dynamic time warping calculation.
+        dist : function or int
+            The method for calculating the distance between x[i] and y[j]. If
+            dist is an int of value p > 0, then the p-norm will be used. If
+            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            None then abs(x[i] - y[j]) will be used.
+        n_jobs : int, optional, default: -1
+            The number of cores to use. -1 uses all cores.
+
+        Returns
+        -------
+        dist_mat : array
+            matrix of all pairwise approximate distances
+        path : list
+            list of indexes for the inputs x and y for each pairwise comparison,
+            ordered by cumulative upper triangle count, i.e. having a 5 time series
+            matrix gives a 5x5 distance matrix, which has 10 pairwise comparisons.
+            The element distance_matrix[0, 4] is the 4th element
+            in the path list (index 3 - Python indexing).
+            The element distance_matrix[1, 4] is the 7th element
+            in the path list (index 6 - Python indexing).
+            For the ease of use the get_path function can be used to access the
+            elements directly with the distance matrix indices.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> import fastdtw_parallel
+        >>> X = np.random.randint(1, 40, size=(5, 5))
+        >>> fastdtw.fastdtw_parallel(X)
+        (array([[ 0., 49., 71., 52., 35.],
+        [49.,  0., 69., 89., 39.],
+        [71., 69.,  0., 64., 90.],
+        [52., 89., 64.,  0., 76.],
+        [35., 39., 90., 76.,  0.]]),
+         [[[(0, 0), (0, 1), (1, 2), (2, 3), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 0), (2, 0), (3, 1), (4, 2), (4, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 3), (3, 4), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (2, 3), (3, 4), (4, 4)]],
+          [[(0, 0), (0, 1), (0, 2), (0, 3), (1, 4), (2, 4), (3, 4), (4, 4)]]])
+
+        Optimization Considerations
+        ---------------------------
+        This function runs fastest if the following conditions are satisfied:
+            1) x and y are either 1 or 2d numpy arrays whose dtype is a
+               subtype of np.float
+            2) The dist input is a positive integer or None
+    '''
+    from joblib import Parallel, delayed, cpu_count
+    delay = delayed(fastdtw_worker_)
+    dist_mat = np.zeros((X.shape[0], X.shape[0]))
+    with Parallel(n_jobs=n_jobs) as parallel:
+        if n_jobs == -1:
+            n_jobs = cpu_count()
+        # Check if there are not more processes than jobs available
+        n_jobs = int(np.min([n_jobs, ((X.shape[0]**2 - X.shape[0])/2)]))
+        indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        indices_lists = np.array_split(indices, n_jobs)
+        result = parallel(delay(X, radius, dist, indices_lists[i]) for i in range(n_jobs))
+    paths_list = []
+    for item in result:
+        dist_mat = dist_mat + item[0]
+        paths_list.append(item[1])
+    dist_mat = dist_mat + dist_mat.T
+    return dist_mat, paths_list
+
+
+def get_path(path_list, row_index, column_index):
+    ''' return the path respective to the position index of a pairwise comparison
+        within the distance matrix.
+
+        Parameters
+        ----------
+        path_list : list
+            list containing lists of paths generated by the fastdtw_parallel
+            method
+        row_index : int
+            row position of the pairwise comparison in the distance matrix
+            generated by the fastdtw_parallel method
+        column_index : int
+            column position of the pairwise comparison in the distance matrix
+            generated by the fastdtw_parallel method
+
+        Returns
+        -------
+        path : list
+            list of indices for the pairwise comparison
+    '''
+    if row_index == column_index:
+        print('There is no warp path between the time series itself!')
+        return []
+    if row_index > column_index:
+        row_index, column_index = column_index, row_index
+
+    mat_size = 0.5 + np.sqrt(0.25 + len(path_list)*2)
+    index = np.vstack(np.triu_indices(mat_size,1)).T
+    pos = np.argmax((index[:,0] == row_index) & (index[:,1]==column_index))
+    path = path_list[pos]
+
+    return path
 
 
 cdef double __fastdtw(x, y, int radius, dist,
@@ -138,7 +296,7 @@ def dtw(x, y, dist=None):
         distance : float
             the approximate distance between the 2 time series
         path : list
-            list of indexes for the inputs x and y
+            list of indices for the inputs x and y
 
         Examples
         --------
@@ -208,6 +366,120 @@ def dtw(x, y, dist=None):
         PyMem_Free(path)
 
     return cost, path_lst
+
+
+def dtw_worker_(X, dist=None, indices_list=None):
+    ''' allow the partial calculation of pairwise comparisons in the parallel
+        computing setting.
+
+         Parameters
+        ----------
+        X : array
+            matrix with all time series that should be compared.
+        dist : function or int
+            The method for calculating the distance between x[i] and y[j]. If
+            dist is an int of value p > 0, then the p-norm will be used. If
+            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            None then abs(x[i] - y[j]) will be used.
+        indices_list : array, optional, default: None
+            indices that have to be calculated by this worker
+
+        Returns
+        -------
+        dist_mat : array
+            matrix of all pairwise distances without approximation
+        path : list
+            list of indices for the inputs x and y for each pairwise comparison
+    '''
+    paths_list = []
+    dist_mat = np.zeros((X.shape[0], X.shape[0]))
+    for row, column in indices_list:
+        cost, path_lst = dtw(X[row][~np.isnan(X[row])], X[column][~np.isnan(X[column])], dist)
+        dist_mat[row, column] = cost
+        paths_list.append(path_lst)
+
+    return dist_mat, paths_list
+
+
+def dtw_parallel(X, dist=None, n_jobs=-1):
+    ''' return the  distance between N time series of the NxM matrix
+        while using parallel computation
+
+        Parameters
+        ----------
+        X : array
+            NxM matrix with all N time series that should be compared, having
+            M time points each. In case the time series have different lengths,
+            the remaining values can be padded with np.nan values.
+        dist : function or int
+            The method for calculating the distance between x[i] and y[j]. If
+            dist is an int of value p > 0, then the p-norm will be used. If
+            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            None then abs(x[i] - y[j]) will be used.
+        n_jobs : int, optional, default: -1
+            The number of cores to use. -1 uses all cores.
+
+        Returns
+        -------
+        dist_mat : array
+            matrix of all pairwise distances without approximation
+        path : list
+            list of indices for the inputs x and y for each pairwise comparison,
+            ordered by cumulative upper triangle count, i.e. having a 5 time series
+            matrix gives a 5x5 distance matrix, which has 10 pairwise comparisons.
+            The element distance_matrix[0, 4] is the 4th element
+            in the path list (index 3 - Python indexing).
+            The element distance_matrix[1, 4] is the 7th element
+            in the path list (index 6 - Python indexing).
+            For the ease of use the get_path function can be used to access the
+            elements directly with the distance matrix indices.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> import dtw_parallel
+        >>> X = np.random.randint(1, 40, size=(5, 5))
+        >>> fastdtw.dtw_parallel(X)
+        (array([[ 0., 49., 71., 52., 35.],
+        [49.,  0., 69., 89., 39.],
+        [71., 69.,  0., 64., 90.],
+        [52., 89., 64.,  0., 76.],
+        [35., 39., 90., 76.,  0.]]),
+         [[[(0, 0), (0, 1), (1, 2), (2, 3), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 0), (2, 0), (3, 1), (4, 2), (4, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 3), (3, 4), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (0, 1), (1, 2), (2, 2), (3, 3), (4, 4)]],
+          [[(0, 0), (1, 1), (2, 2), (2, 3), (3, 4), (4, 4)]],
+          [[(0, 0), (0, 1), (0, 2), (0, 3), (1, 4), (2, 4), (3, 4), (4, 4)]]])
+
+        Optimization Considerations
+        ---------------------------
+        This function runs fastest if the following conditions are satisfied:
+            1) x and y are either 1 or 2d numpy arrays whose dtype is a
+               subtype of np.float
+            2) The dist input is a positive integer or None
+    '''
+    from joblib import Parallel, delayed, cpu_count
+    delay = delayed(dtw_worker_)
+    dist_mat = np.zeros((X.shape[0], X.shape[0]))
+    with Parallel(n_jobs=n_jobs) as parallel:
+        if n_jobs == -1:
+            n_jobs = cpu_count()
+        # Check if there are not more processes than jobs available
+        n_jobs = int(np.min([n_jobs, ((X.shape[0]**2 - X.shape[0])/2)]))
+        indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        indices_lists = np.array_split(indices, n_jobs)
+        result = parallel(delay(X, dist, indices_lists[i]) for i in range(n_jobs))
+    paths_list = []
+    for item in result:
+        dist_mat = dist_mat + item[0]
+        paths_list.append(item[1])
+    dist_mat = dist_mat + dist_mat.T
+    return dist_mat, paths_list
 
 
 cdef inline double __difference(double a, double b):
