@@ -166,24 +166,28 @@ def __dtw_subsequence(x, y, window, dist):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
-    window = ((i + 1, j + 1) for i, j in window)
+    # window = ((i + 1, j + 1) for i, j in window)
     D = defaultdict(lambda: (float('inf'),))
-    for j in range(len_y+1):
-        D[0, j] = (0, 0, 0)
+    for j in range(-1, len_y):
+        D[-1, j] = (0, -1, -1)
     for i, j in window:
-        dt = dist(x[i-1], y[j-1])
+        dt = dist(x[i], y[j])
         D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
                       (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
 
-    j_list = [D[len_x, j] for j in range(len_y+1)]
-    i, j = len_x, min(j_list, key=lambda a: a[0])[2] + 1
+    j_list = [D[len_x-1, j][0] for j in range(-1, len_y)]
+    i, j = len_x-1, np.argmin(j_list) - 1
     end_j = j
-    while not (i == 0):
-        path.append((i-1, j-1))
-        i, j = D[i, j][1], D[i, j][2]
+    while not (i == -1):
+        path.append((i, j))
+        t = D[i, j]
+        if len(t) < 3:
+            for p in path:
+                print(p)
+        i, j = t[1], t[2]
     path.reverse()
-    return (D[len_x, end_j][0], path)
+    return (D[len_x-1, end_j][0], path)
 
 
 def __reduce_by_half(x):

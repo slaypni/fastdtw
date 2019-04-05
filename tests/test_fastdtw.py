@@ -20,7 +20,7 @@ class FastdtwTest(unittest.TestCase):
         self.y_1d = [2, 3, 4]
         self.x_2d = np.array([[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]])
         self.y_2d = np.array([[2, 2], [3, 3], [4, 4]])
-        self.z_2d = np.array([[1, 1], [1, 1]])
+        self.z_2d = np.array([[1, 1], [3, 3], [2, 2]])
         self.dist_2d = lambda a, b: sum((a - b) ** 2) ** 0.5
 
     def test_1d_fastdtw(self):
