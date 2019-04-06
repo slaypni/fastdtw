@@ -5,6 +5,8 @@ fastdtw.egg-info/
 .env/
 dist/
 build/
+.vscode/
+.venv/
 .python-version
 *.pyc
 *.so
