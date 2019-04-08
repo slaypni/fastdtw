@@ -167,14 +167,17 @@ def fastdtw_parallel(X, radius=1, dist=None, n_jobs=-1):
             n_jobs = cpu_count()
         # Check if there are not more processes than jobs available
         n_jobs = int(np.min([n_jobs, ((X.shape[0]**2 - X.shape[0])/2)]))
-        indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        # upper triangle indices
+        triu_indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        # lower triangle indices
+        tril_indices = np.vstack(np.tril_indices(X.shape[0], -1)).T
+        indices = np.vstack((triu_indices, tril_indices))
         indices_lists = np.array_split(indices, n_jobs)
         result = parallel(delay(X, radius, dist, indices_lists[i]) for i in range(n_jobs))
     paths_list = []
     for item in result:
         dist_mat = dist_mat + item[0]
         paths_list.append(item[1])
-    dist_mat = dist_mat + dist_mat.T
     return dist_mat, paths_list
 
 
@@ -197,17 +200,19 @@ def get_path(path_list, row_index, column_index):
         Returns
         -------
         path : list
-            list of indexes for the pairwise comparison
+            list of indices for the pairwise comparison
     '''
     if row_index == column_index:
         print('There is no warp path between the time series itself!')
         return []
-    if row_index > column_index:
-        row_index, column_index = column_index, row_index
 
     mat_size = 0.5 + np.sqrt(0.25 + len(path_list)*2)
-    index = np.vstack(np.triu_indices(mat_size,1)).T
-    pos = np.argmax((index[:,0] == row_index) & (index[:,1]==column_index))
+    # upper triangle indices
+    triu_indices = np.vstack(np.triu_indices(mat_size, 1)).T
+    # lower triangle indices
+    tril_indices = np.vstack(np.tril_indices(mat_size, -1)).T
+    index = np.vstack((triu_indices, tril_indices))
+    pos = np.argmax((index[:, 0] == row_index) & (index[:, 1] == column_index))
     path = path_list[pos]
 
     return path
@@ -393,14 +398,17 @@ def dtw_parallel(X, dist=None, n_jobs=-1):
             n_jobs = cpu_count()
         # Check if there are not more processes than jobs available
         n_jobs = int(np.min([n_jobs, ((X.shape[0]**2 - X.shape[0])/2)]))
-        indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        # upper triangle indices
+        triu_indices = np.vstack(np.triu_indices(X.shape[0], 1)).T
+        # lower triangle indices
+        tril_indices = np.vstack(np.tril_indices(X.shape[0], -1)).T
+        indices = np.vstack((triu_indices, tril_indices))
         indices_lists = np.array_split(indices, n_jobs)
         result = parallel(delay(X, dist, indices_lists[i]) for i in range(n_jobs))
     paths_list = []
     for item in result:
         dist_mat = dist_mat + item[0]
         paths_list.append(item[1])
-    dist_mat = dist_mat + dist_mat.T
     return dist_mat, paths_list
 
 
