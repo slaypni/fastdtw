@@ -223,7 +223,7 @@ def __difference(a, b):
 
 
 def __norm(p):
-    return lambda a, b: np.linalg.norm(a - b, p)
+    return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
 
 
 def __fastdtw(x, y, radius, dist):
