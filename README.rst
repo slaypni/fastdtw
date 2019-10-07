@@ -26,6 +26,26 @@ Example
   distance, path = fastdtw(x, y, dist=euclidean)
   print(distance)
 
+
+Example parallel computing
+-------
+
+::
+
+  import numpy as np
+  from scipy.spatial.distance import euclidean
+
+  from fastdtw import fastdtw_parallel, get_path
+
+  X = np.random.randint(1, 40, size=(5, 5))
+  distance_matrix, path_list = fastdtw_parallel(X, dist=euclidean, n_jobs=-1)
+  print(distance_matrix)
+
+  # To allow the straight forward access of warp paths to the respective distance matrix element
+  # the get_path function can be used
+  # Access the path for distance matrix element with index row=2 and column=3
+  print(get_path(path_list, 2, 3)
+
 References
 ----------
 
