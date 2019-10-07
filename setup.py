@@ -56,7 +56,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 with open(os.path.join(dir_path, 'README.rst')) as f:
     long_description = f.read()
 
-needs_pytest = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
+needs_pytest = set(['pytest', 'test', 'ptr']).intersection(sys.argv)
 pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 kwargs = {
