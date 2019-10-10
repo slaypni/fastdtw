@@ -138,7 +138,7 @@ def __dtw(x, y, window, dist):
     D = defaultdict(lambda: (float('inf'),))
     D[0, 0] = (0, 0, 0)
     for i, j in window:
-        dt = dist(x[i-1], y[j-1])
+        dt = np.sum(dist(x[i-1].reshape(-1, 1), y[j-1].reshape(-1, 1)))
         D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
                       (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
