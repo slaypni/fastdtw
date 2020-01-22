@@ -81,7 +81,7 @@ def __prep_inputs(x, y, dist):
 
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist <= 0:
+    if isinstance(dist, numbers.Number) and dist < 0:
         raise ValueError('dist cannot be a negative integer')
 
     if dist is None:
@@ -90,7 +90,8 @@ def __prep_inputs(x, y, dist):
         else: 
             dist = __norm(p=1)
     elif isinstance(dist, numbers.Number):
-        dist = __norm(p=dist)
+        if dist != 0:  # dist == 0:  # Using Chebyshev Distance
+            dist = __norm(p=dist)
 
     return x, y, dist
 
@@ -138,9 +139,16 @@ def __dtw(x, y, window, dist):
     D = defaultdict(lambda: (float('inf'),))
     D[0, 0] = (0, 0, 0)
     for i, j in window:
-        dt = dist(x[i-1], y[j-1])
-        D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
-                      (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
+        if dist == 0:
+            dt = __difference(x[i - 1], y[j - 1])
+            D[i, j] = min((max((D[i - 1, j][0], dt)), i - 1, j),
+                          (max((D[i, j - 1][0], dt)), i, j - 1),
+                          (max((D[i - 1, j - 1][0], dt)), i - 1, j - 1),
+                          key=lambda a: a[0])
+        else:
+            dt = dist(x[i - 1], y[j - 1])
+            D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
+                          (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
     i, j = len_x, len_y
     while not (i == j == 0):
