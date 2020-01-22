@@ -33,6 +33,38 @@ def fastdtw(x, y, radius=1, dist=None):
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
 
+            If dist = 0 :
+            the distance meansure becomes the Generalize DTW-Minkowski, where
+            instead of accumulating the warped distance, it only keeps the max
+            distance between each point.
+            It provides an alternative warped path different from changing the
+            distance measure.
+            That is:
+            for sequence x and y,
+                dist = dist(x[i], y[j])
+                D[i][j] = min(max(dist, D[i][j-1]),
+                              max(dist, D[i-1][j]),
+                              max(dist, D[i-1][j-1]))
+            E.g.
+            Minkowski (Chebyshev) DTW:
+                3 |                 3 |x x x x 2 2
+                5 |                 5 |1 2 2 4 4 2
+                3 |                 3 |1 1 1 2 2 2
+                4 |          ->     4 |1 2 2 4 4 x  => Distance_DTW_min = 2.0
+                3 |                 3 |1 x x x x x
+                4 |                 4 |0 x x x x x
+                  |___________        |___________
+                   4 3 3 1 1 3         4 3 3 1 1 3
+            Compare to,
+            Euclidean DTW:
+                3 |                 3 |5 4 4  8 12
+                5 |                 5 |4 6 6 18 22
+                3 |                 3 |3 x x  x  x
+                4 |          ->     4 |2 x x  x  x
+                3 |                 3 |1 x x  x  x
+                4 |                 4 |0 x x  x  x
+                  |___________        |___________
+                   4 3 3 1 1 3         4 3 3 1 1 3
         Returns
         -------
         distance : float
@@ -87,7 +119,7 @@ def __prep_inputs(x, y, dist):
     if dist is None:
         if x.ndim == 1:
             dist = __difference
-        else: 
+        else:
             dist = __norm(p=1)
     elif isinstance(dist, numbers.Number):
         if dist != 0:  # dist == 0:  # Using Chebyshev Distance
