@@ -238,7 +238,7 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
     cdef int window_len = window.size()
     cdef WindowElement we
     cdef int idx, i, cost_len
-    cdef double d_left, d_up, d_corner, dt, diff, sm
+    cdef double d_left, d_up, d_corner, max_up_dt, max_left_dt, max_corner_dt, dt, diff, sm
 
     # initializing to avoid compiler warnings although if these variables are
     # used they will always be set below
@@ -253,19 +253,19 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
     # if it is numpy array we can get an order of magnitude improvement
     # by calculating the p-norm ourselves.
     cdef double pnorm = -1.0 if not isinstance(dist, numbers.Number) else dist
-    if ((dist is None or pnorm > 0) and
+    if ((dist is None or pnorm >= 0) and
         (isinstance(x, np.ndarray) and isinstance(y, np.ndarray) and
          np.issubdtype(x.dtype, np.floating) and
          np.issubdtype(y.dtype, np.floating))):
 
         if x.ndim == 1:
-            if dist is None:
+            if dist is None or pnorm == 0:
                 pnorm = 1
             use_1d = 1
             x_arr1d = x
             y_arr1d = y
         elif x.ndim == 2:
-            if dist is None:
+            if dist is None or pnorm == 0:
                 pnorm = 1
             use_2d = 1
             x_arr2d = x
@@ -309,15 +309,30 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
         d_corner = cost[we.cost_idx_corner].cost \
             if we.cost_idx_corner != -1 else INFINITY
 
-        if d_up < d_left and d_up < d_corner:
-            cost[idx + 1].cost = d_up + dt
-            cost[idx + 1].prev_idx = we.cost_idx_up
-        elif d_left < d_corner:
-            cost[idx + 1].cost = d_left + dt
-            cost[idx + 1].prev_idx = we.cost_idx_left
+        if dist == 0:
+            max_up_dt = d_up if d_up > dt else dt
+            max_left_dt = d_left if d_left > dt else dt
+            max_corner_dt = d_corner if d_corner > dt else dt
+
+            if max_up_dt < max_left_dt and max_up_dt < max_corner_dt:
+                cost[idx + 1].cost = max_up_dt
+                cost[idx + 1].prev_idx = we.cost_idx_up
+            elif max_left_dt < max_corner_dt:
+                cost[idx + 1].cost = max_left_dt
+                cost[idx + 1].prev_idx = we.cost_idx_left
+            else:
+                cost[idx + 1].cost = max_corner_dt
+                cost[idx + 1].prev_idx = we.cost_idx_corner
         else:
-            cost[idx + 1].cost = d_corner + dt
-            cost[idx + 1].prev_idx = we.cost_idx_corner
+            if d_up < d_left and d_up < d_corner:
+                cost[idx + 1].cost = d_up + dt
+                cost[idx + 1].prev_idx = we.cost_idx_up
+            elif d_left < d_corner:
+                cost[idx + 1].cost = d_left + dt
+                cost[idx + 1].prev_idx = we.cost_idx_left
+            else:
+                cost[idx + 1].cost = d_corner + dt
+                cost[idx + 1].prev_idx = we.cost_idx_corner
 
     # recreate the path
     idx = cost_len - 1
