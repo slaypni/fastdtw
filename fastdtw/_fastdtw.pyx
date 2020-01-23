@@ -224,7 +224,7 @@ def __prep_inputs(x, y, dist):
 
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist <= 0:
+    if isinstance(dist, numbers.Number) and dist < 0:
         raise ValueError('dist cannot be a negative integer')
 
     return x, y
