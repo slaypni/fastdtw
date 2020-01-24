@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import, division
+
+import math
 import numbers
 import numpy as np
 from collections import defaultdict
@@ -33,7 +35,7 @@ def fastdtw(x, y, radius=1, dist=None):
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
 
-            If dist = 0 :
+            If dist = INF :
             the distance meansure becomes the Generalize DTW-Minkowski, where
             instead of accumulating the warped distance, it only keeps the max
             distance between each point.
@@ -113,8 +115,8 @@ def __prep_inputs(x, y, dist):
 
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist < 0:
-        raise ValueError('dist cannot be a negative integer')
+    if isinstance(dist, numbers.Number) and dist <= 0:
+        raise ValueError('dist must be positive')
 
     if dist is None:
         if x.ndim == 1:
@@ -122,7 +124,9 @@ def __prep_inputs(x, y, dist):
         else:
             dist = __norm(p=1)
     elif isinstance(dist, numbers.Number):
-        if dist != 0:  # dist == 0:  # Using Chebyshev Distance
+        if dist == math.inf:
+            pass
+        elif dist != 0:
             dist = __norm(p=dist)
 
     return x, y, dist
@@ -171,7 +175,7 @@ def __dtw(x, y, window, dist):
     D = defaultdict(lambda: (float('inf'),))
     D[0, 0] = (0, 0, 0)
     for i, j in window:
-        if dist == 0:
+        if dist == math.inf:
             dt = __difference(x[i - 1], y[j - 1])
             D[i, j] = min((max((D[i - 1, j][0], dt)), i - 1, j),
                           (max((D[i, j - 1][0], dt)), i, j - 1),

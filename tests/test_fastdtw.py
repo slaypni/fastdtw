@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import, division
 
+import math
 import unittest
 
 import numpy as np
@@ -58,10 +59,10 @@ class FastdtwTest(unittest.TestCase):
         x = np.array([4, 3, 3, 1, 1, 3, 4])
         y = np.array([4, 3, 5, 3, 5, 3, 4])
 
-        distance_c_1 = fastdtw_c(x, y, dist=0)[0]
-        distance_c_2 = fastdtw_c(self.x_1d, self.y_1d, dist=0)[0]
-        distance_p_1 = fastdtw_p(x, y, dist=0)[0]
-        distance_p_2 = fastdtw_p(self.x_1d, self.y_1d, dist=0)[0]
+        distance_c_1 = fastdtw_c(x, y, dist=math.inf)[0]
+        distance_c_2 = fastdtw_c(self.x_1d, self.y_1d, dist=math.inf)[0]
+        distance_p_1 = fastdtw_p(x, y, dist=math.inf)[0]
+        distance_p_2 = fastdtw_p(self.x_1d, self.y_1d, dist=math.inf)[0]
 
         self.assertEqual(distance_c_1, 2.0)
         self.assertEqual(distance_c_2, 1.0)

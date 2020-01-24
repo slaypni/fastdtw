@@ -224,8 +224,8 @@ def __prep_inputs(x, y, dist):
 
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
-    if isinstance(dist, numbers.Number) and dist < 0:
-        raise ValueError('dist cannot be a negative integer')
+    if isinstance(dist, numbers.Number) and dist <= 0:
+        raise ValueError('dist must be positive')
 
     return x, y
 
@@ -252,7 +252,7 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
     # define the dist function
     # if it is numpy array we can get an order of magnitude improvement
     # by calculating the p-norm ourselves.
-    cdef double pnorm = -1.0 if not isinstance(dist, numbers.Number) else dist
+    cdef double pnorm = -1.0 if not isinstance(dist, numbers.Number) else 1.0 if dist==INFINITY else dist
     if ((dist is None or pnorm >= 0) and
         (isinstance(x, np.ndarray) and isinstance(y, np.ndarray) and
          np.issubdtype(x.dtype, np.floating) and
@@ -292,7 +292,7 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
 
         we = window[idx]
         if use_1d:
-            dt = abs(x_arr1d[we.x_idx] - y_arr1d[we.y_idx])
+            dt = pow(abs(x_arr1d[we.x_idx] - y_arr1d[we.y_idx]), pnorm)
         elif use_2d:
             sm = 0
             for i in range(width):
@@ -309,7 +309,7 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
         d_corner = cost[we.cost_idx_corner].cost \
             if we.cost_idx_corner != -1 else INFINITY
 
-        if dist == 0:
+        if dist == INFINITY:
             max_up_dt = d_up if d_up > dt else dt
             max_left_dt = d_left if d_left > dt else dt
             max_corner_dt = d_corner if d_corner > dt else dt
