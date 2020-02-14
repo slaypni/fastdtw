@@ -31,11 +31,11 @@ def fastdtw(x, y, radius=1, dist=None):
             yield an exact dynamic time warping calculation.
         dist : function or int
             The method for calculating the distance between x[i] and y[j]. If
-            dist is an int of value p > 0, then the p-norm will be used. If
-            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            dist_func is an int of value p > 0, then the p-norm will be used. If
+            dist_func is a function then dist_func(x[i], y[j]) will be used. If dist_func is
             None then abs(x[i] - y[j]) will be used.
 
-            If dist = INF :
+            If dist_func = INF :
             the distance meansure becomes the Generalize DTW-Minkowski, where
             instead of accumulating the warped distance, it only keeps the max
             distance between each point.
@@ -43,10 +43,10 @@ def fastdtw(x, y, radius=1, dist=None):
             distance measure.
             That is:
             for sequence x and y,
-                dist = dist(x[i], y[j])
-                D[i][j] = min(max(dist, D[i][j-1]),
-                              max(dist, D[i-1][j]),
-                              max(dist, D[i-1][j-1]))
+                dist_func = dist_func(x[i], y[j])
+                D[i][j] = min(max(dist_func, D[i][j-1]),
+                              max(dist_func, D[i-1][j]),
+                              max(dist_func, D[i-1][j-1]))
             E.g.
             Minkowski (Chebyshev) DTW:
                 3 |                 3 |x x x x 2 2
@@ -83,8 +83,8 @@ def fastdtw(x, y, radius=1, dist=None):
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    x, y, dist = __prep_inputs(x, y, dist)
-    return __fastdtw(x, y, radius, dist)
+    x, y, dist_func = __prep_inputs(x, y, dist)
+    return __fastdtw(x, y, radius, dist, dist_func)
 
 
 def __difference(a, b):
@@ -95,7 +95,7 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
 
 
-def __fastdtw(x, y, radius, dist):
+def __fastdtw(x, y, radius, dist, dist_func):
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
@@ -104,9 +104,9 @@ def __fastdtw(x, y, radius, dist):
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
     distance, path = \
-        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
+        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist, dist_func=dist_func)
     window = __expand_window(path, len(x), len(y), radius)
-    return __dtw(x, y, window, dist=dist)
+    return __dtw(x, y, window, dist=dist, dist_func=dist_func)
 
 
 def __prep_inputs(x, y, dist):
@@ -116,20 +116,17 @@ def __prep_inputs(x, y, dist):
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
     if isinstance(dist, numbers.Number) and dist <= 0:
-        raise ValueError('dist must be positive')
+        raise ValueError('dist_func must be positive')
 
     if dist is None:
         if x.ndim == 1:
-            dist = __difference
+            dist_func = __difference
         else:
-            dist = __norm(p=1)
+            dist_func = __norm(p=1)
     elif isinstance(dist, numbers.Number):
-        if dist == math.inf:
-            pass
-        elif dist != 0:
-            dist = __norm(p=dist)
+            dist_func = __norm(p=dist)
 
-    return x, y, dist
+    return x, y, dist_func
 
 
 def dtw(x, y, dist=None):
@@ -143,8 +140,8 @@ def dtw(x, y, dist=None):
             input array 2
         dist : function or int
             The method for calculating the distance between x[i] and y[j]. If
-            dist is an int of value p > 0, then the p-norm will be used. If
-            dist is a function then dist(x[i], y[j]) will be used. If dist is
+            dist_func is an int of value p > 0, then the p-norm will be used. If
+            dist_func is a function then dist_func(x[i], y[j]) will be used. If dist_func is
             None then abs(x[i] - y[j]) will be used.
 
         Returns
@@ -163,11 +160,11 @@ def dtw(x, y, dist=None):
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    x, y, dist = __prep_inputs(x, y, dist)
-    return __dtw(x, y, None, dist)
+    x, y, dist_func = __prep_inputs(x, y, dist)
+    return __dtw(x, y, None, dist, dist_func)
 
 
-def __dtw(x, y, window, dist):
+def __dtw(x, y, window, dist, dist_func):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
@@ -175,14 +172,13 @@ def __dtw(x, y, window, dist):
     D = defaultdict(lambda: (float('inf'),))
     D[0, 0] = (0, 0, 0)
     for i, j in window:
+        dt = dist_func(x[i - 1], y[j - 1])
         if dist == math.inf:
-            dt = __difference(x[i - 1], y[j - 1])
             D[i, j] = min((max((D[i - 1, j][0], dt)), i - 1, j),
                           (max((D[i, j - 1][0], dt)), i, j - 1),
                           (max((D[i - 1, j - 1][0], dt)), i - 1, j - 1),
                           key=lambda a: a[0])
         else:
-            dt = dist(x[i - 1], y[j - 1])
             D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
                           (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
