@@ -291,14 +291,21 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
     for idx in range(window_len):
 
         we = window[idx]
+
         if use_1d:
             dt = pow(abs(x_arr1d[we.x_idx] - y_arr1d[we.y_idx]), pnorm)
         elif use_2d:
-            sm = 0
-            for i in range(width):
-                diff = abs(x_arr2d[we.x_idx, i] - y_arr2d[we.y_idx, i])
-                sm += pow(diff, pnorm)
-            dt = pow(sm, 1 / pnorm)
+            if dist == INFINITY:
+                dt = 0.
+                for i in range(width):
+                    diff = abs(x_arr2d[we.x_idx, i] - y_arr2d[we.y_idx, i])
+                    dt = max(diff, dt)
+            else:
+                sm = 0
+                for i in range(width):
+                    diff = abs(x_arr2d[we.x_idx, i] - y_arr2d[we.y_idx, i])
+                    sm += pow(diff, pnorm)
+                dt = pow(sm, 1 / pnorm)
         else:
             dt = dist(x[we.x_idx], y[we.y_idx])
 

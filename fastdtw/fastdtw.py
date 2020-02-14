@@ -90,6 +90,8 @@ def fastdtw(x, y, radius=1, dist=None):
 def __difference(a, b):
     return abs(a - b)
 
+def __max(a, b):
+    return abs(np.max(np.atleast_1d(a) - np.atleast_1d(b)))
 
 def __norm(p):
     return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
@@ -124,7 +126,14 @@ def __prep_inputs(x, y, dist):
         else:
             dist_func = __norm(p=1)
     elif isinstance(dist, numbers.Number):
+        if dist == math.inf:
+            dist_func = __max
+        else:
             dist_func = __norm(p=dist)
+    elif callable(dist):
+        dist_func = dist
+    else:
+        __norm(p=1)
 
     return x, y, dist_func
 
@@ -179,27 +188,27 @@ def __dtw(x, y, window, dist, dist_func):
                           (max((D[i - 1, j - 1][0], dt)), i - 1, j - 1),
                           key=lambda a: a[0])
         else:
-            D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
-                          (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
+            D[i, j] = min((D[i - 1, j][0] + dt, i - 1, j), (D[i, j - 1][0] + dt, i, j - 1),
+                          (D[i - 1, j - 1][0] + dt, i - 1, j - 1), key=lambda a: a[0])
     path = []
     i, j = len_x, len_y
     while not (i == j == 0):
-        path.append((i-1, j-1))
+        path.append((i - 1, j - 1))
         i, j = D[i, j][1], D[i, j][2]
     path.reverse()
     return (D[len_x, len_y][0], path)
 
 
 def __reduce_by_half(x):
-    return [(x[i] + x[1+i]) / 2 for i in range(0, len(x) - len(x) % 2, 2)]
+    return [(x[i] + x[1 + i]) / 2 for i in range(0, len(x) - len(x) % 2, 2)]
 
 
 def __expand_window(path, len_x, len_y, radius):
     path_ = set(path)
     for i, j in path:
         for a, b in ((i + a, j + b)
-                     for a in range(-radius, radius+1)
-                     for b in range(-radius, radius+1)):
+                     for a in range(-radius, radius + 1)
+                     for b in range(-radius, radius + 1)):
             path_.add((a, b))
 
     window_ = set()

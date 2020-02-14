@@ -62,15 +62,16 @@ class FastdtwTest(unittest.TestCase):
         y_3d = np.array([[4, 4, 4], [3, 3, 3], [5, 5, 5], [3, 3, 3], [5, 5, 5], [3, 3, 3], [4, 4, 4]])
 
         distance_c_1 = fastdtw_c(x, y, dist=math.inf)[0]
-        distance_c_11 = fastdtw_c(self.x_1d, self.y_1d, dist=math.inf)[0]
         distance_p_1 = fastdtw_p(x, y, dist=math.inf)[0]
+
+        distance_c_11 = fastdtw_c(self.x_1d, self.y_1d, dist=math.inf)[0]
         distance_p_11 = fastdtw_p(self.x_1d, self.y_1d, dist=math.inf)[0]
 
-        distance_c_2 = fastdtw_c(self.dist_2d, self.dist_2d, dist=math.inf)[0]
-        distance_p_2 = fastdtw_p(self.dist_2d, self.dist_2d, dist=math.inf)[0]
+        distance_c_2 = fastdtw_c(self.x_2d, self.y_2d, dist=math.inf)[0]
+        distance_p_2 = fastdtw_p(self.x_2d, self.y_2d, dist=math.inf)[0]
 
         distance_c_3 = fastdtw_c(x_3d, y_3d, dist=math.inf)[0]
-        distance_p_3 = fastdtw_p(x_3d, x_3d, dist=math.inf)[0]
+        distance_p_3 = fastdtw_p(x_3d, y_3d, dist=math.inf)[0]
 
         self.assertEqual(distance_c_1, 2.0)
         self.assertEqual(distance_c_11, 1.0)
