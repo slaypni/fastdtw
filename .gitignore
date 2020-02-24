@@ -11,3 +11,6 @@ build/
 *.pyc
 *.so
 *.html
+
+# No cythonized C++ files, which can get out of date across Python versions
+*.cpp
