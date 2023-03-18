@@ -115,10 +115,11 @@ cdef double __fastdtw(x, y, int radius, dist,
 
     cdef vector[WindowElement] window
     __expand_window(path, path_len, x, y, radius, dist, window)
-    return __dtw(x, y, window, dist, path, path_len)
+    return __dtw(x, y, window, dist, path, path_len,
+                 b_partial_start=False, b_partial_end=False)
 
 
-def dtw(x, y, dist=None):
+def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -132,6 +133,14 @@ def dtw(x, y, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        b_partial_start: bool
+            If True, calculate a partial match where the start of path does
+            not point to the start of x. Otherwise, the start of path points
+            to the start of x.
+        b_partial_end: bool
+            If True, calculate a partial match where the end of path does not
+            point to the end of x. Otherwise, the end of path points to the
+            end of x.
 
         Returns
         -------
@@ -175,6 +184,10 @@ def dtw(x, y, dist=None):
                 we.cost_idx_left = -1
                 we.cost_idx_up = -1
                 we.cost_idx_corner = 0
+            elif b_partial_start and y_idx == 0:
+                we.cost_idx_left = -1
+                we.cost_idx_up = -1
+                we.cost_idx_corner = 0
             else:
                 we.cost_idx_left = -1 \
                     if y_idx == 0 and x_idx > 0 \
@@ -199,7 +212,8 @@ def dtw(x, y, dist=None):
             (len(x) + len(y) - 1) * sizeof(PathElement)))
 
     cdef int path_len = 0
-    cost = __dtw(x, y, window, dist, path, path_len)
+    cost = __dtw(x, y, window, dist, path, path_len,
+                 b_partial_start, b_partial_end)
 
     path_lst = []
     if path != NULL:
@@ -231,7 +245,8 @@ def __prep_inputs(x, y, dist):
 
 
 cdef double __dtw(x, y, vector[WindowElement] &window, dist,
-                  PathElement *path, int &path_len) except? -1:
+                  PathElement *path, int &path_len,
+                  b_partial_start, b_partial_end) except? -1:
     ''' calculate the distance between 2 time series where the path between 2
         time series can only be in window.
     '''
@@ -320,13 +335,24 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
             cost[idx + 1].prev_idx = we.cost_idx_corner
 
     # recreate the path
-    idx = cost_len - 1
+    t_end = cost_len - 1
+    if b_partial_end:
+        distance_min = INFINITY
+        finding_y = len(y) - 1
+        for idx in range(1, cost_len):
+            if window[idx - 1].y_idx == finding_y \
+               and distance_min > cost[idx].cost:
+                distance_min = cost[idx].cost
+                t_end = idx
+    idx = t_end
     (&path_len)[0] = 0
     while idx != 0:
         we = window[idx - 1]
         path[path_len].x_idx = we.x_idx
         path[path_len].y_idx = we.y_idx
         (&path_len)[0] += 1
+        if b_partial_start and we.y_idx == 0:
+            break
         idx = cost[idx].prev_idx
 
     # reverse path
@@ -335,7 +361,7 @@ cdef double __dtw(x, y, vector[WindowElement] &window, dist,
         path[path_len - 1 - i] = path[i]
         path[i] = temp
 
-    return cost[cost_len - 1].cost
+    return cost[t_end].cost
 
 
 cdef __reduce_by_half(x):
