@@ -72,7 +72,8 @@ def __fastdtw(x, y, radius, dist):
     distance, path = \
         __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
     window = __expand_window(path, len(x), len(y), radius)
-    return __dtw(x, y, window, dist=dist)
+    return __dtw(x, y, window, dist=dist,
+                 b_partial_start=False, b_partial_end=False)
 
 
 def __prep_inputs(x, y, dist):
@@ -95,7 +96,7 @@ def __prep_inputs(x, y, dist):
     return x, y, dist
 
 
-def dtw(x, y, dist=None):
+def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -109,6 +110,14 @@ def dtw(x, y, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        b_partial_start: bool
+            If True, calculate a partial match where the start of path does
+            not point to the start of x. Otherwise, the start of path points
+            to the start of x.
+        b_partial_end: bool
+            If True, calculate a partial match where the end of path does not
+            point to the end of x. Otherwise, the end of path points to the
+            end of x.
 
         Returns
         -------
@@ -127,27 +136,39 @@ def dtw(x, y, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
-    return __dtw(x, y, None, dist)
+    return __dtw(x, y, None, dist, b_partial_start, b_partial_end)
 
 
-def __dtw(x, y, window, dist):
+def __dtw(x, y, window, dist, b_partial_start, b_partial_end):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
     window = ((i + 1, j + 1) for i, j in window)
     D = defaultdict(lambda: (float('inf'),))
     D[0, 0] = (0, 0, 0)
+    if b_partial_start:
+        for i in range(1, len_x+1):
+            D[i, 0] = (0, 0, 0)
     for i, j in window:
         dt = dist(x[i-1], y[j-1])
         D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
                       (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
     path = []
-    i, j = len_x, len_y
+    t_end = len_x
+    if b_partial_end:
+        distance_min = float('inf')
+        for i in range(1, len_x+1):
+            if distance_min > D[i, len_y][0]:
+                distance_min = D[i, len_y][0]
+                t_end = i
+    i, j = t_end, len_y
     while not (i == j == 0):
         path.append((i-1, j-1))
+        if b_partial_start and j == 1:
+            break;
         i, j = D[i, j][1], D[i, j][2]
     path.reverse()
-    return (D[len_x, len_y][0], path)
+    return (D[t_end, len_y][0], path)
 
 
 def __reduce_by_half(x):
@@ -179,6 +200,6 @@ def __expand_window(path, len_x, len_y, radius):
                     new_start_j = j
             elif new_start_j is not None:
                 break
-        start_j = new_start_j
+        start_j = new_start_j if new_start_j is not None else 0
 
     return window
