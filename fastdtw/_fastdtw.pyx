@@ -32,7 +32,7 @@ cdef struct PathElement:
 
 
 def fastdtw(x, y, int radius=1, dist=None,
-            b_partial_start=False, b_partial_end=False):
+            b_partial_start=False, b_partial_end=False, radius_x=4):
     ''' return the approximate distance between 2 time series with O(N)
         time and memory complexity
 
@@ -60,6 +60,9 @@ def fastdtw(x, y, int radius=1, dist=None,
             If True, calculate a partial match where the end of path does not
             point to the end of x. Otherwise, the end of path points to the
             end of x.
+        radius_x: int
+            When b_partial_{start|end} is True, radius_x is used for x-axis
+            calculation instead of radius.
 
         Returns
         -------
@@ -84,7 +87,8 @@ def fastdtw(x, y, int radius=1, dist=None,
                subtype of np.float
             2) The dist input is a positive integer or None
     '''
-    x, y = __prep_inputs(x, y, dist)
+    x, y, radius_x = __prep_inputs(x, y, radius, dist,
+                                   b_partial_start, b_partial_end, radius_x)
 
     # passing by reference to recursive functions apparently doesn't work
     # so we are passing pointers
@@ -93,7 +97,7 @@ def fastdtw(x, y, int radius=1, dist=None,
                                     sizeof(PathElement)))
     cdef int path_len = 0, i
     cost = __fastdtw(x, y, radius, dist, path, path_len,
-                     b_partial_start, b_partial_end)
+                     b_partial_start, b_partial_end, radius_x)
 
     path_lst = []
     if path != NULL:
@@ -105,13 +109,15 @@ def fastdtw(x, y, int radius=1, dist=None,
 
 cdef double __fastdtw(x, y, int radius, dist,
                       PathElement *path, int &path_len,
-                      b_partial_start, b_partial_end) except? -1:
+                      b_partial_start, b_partial_end, int radius_x) except? -1:
     cdef int min_time_size
     cdef double cost
 
     min_time_size = radius + 2
+    min_time_size_x = radius_x + 2 if b_partial_start or b_partial_end \
+        else min_time_size
 
-    if len(x) < min_time_size or len(y) < min_time_size:
+    if len(x) < min_time_size_x or len(y) < min_time_size:
         cost, path_lst = dtw(x, y, dist=dist,
                              b_partial_start=b_partial_start,
                              b_partial_end=b_partial_end)
@@ -125,11 +131,11 @@ cdef double __fastdtw(x, y, int radius, dist,
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
     distance = __fastdtw(x_shrinked, y_shrinked, radius, dist, path, path_len,
-                         b_partial_start, b_partial_end)
+                         b_partial_start, b_partial_end, radius_x)
 
     cdef vector[WindowElement] window
     __expand_window(path, path_len, x, y, radius, dist, window,
-                    b_partial_start)
+                    b_partial_start, radius_x)
     return __dtw(x, y, window, dist, path, path_len,
                  b_partial_start, b_partial_end)
 
@@ -183,7 +189,8 @@ def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
 
     cdef int len_x, len_y, x_idx, y_idx, idx
     cdef double cost
-    x, y = __prep_inputs(x, y, dist)
+    x, y, _ = __prep_inputs(x, y, -1, dist,
+                            b_partial_start, b_partial_end, -1)
     len_x, len_y = len(x), len(y)
     idx = 0
     cdef WindowElement we
@@ -247,7 +254,8 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(a - b, p)
 
 
-def __prep_inputs(x, y, dist):
+def __prep_inputs(x, y, int radius, dist,
+                  b_partial_start, b_partial_end, int radius_x):
     x = np.asanyarray(x, dtype='float')
     y = np.asanyarray(y, dtype='float')
 
@@ -256,7 +264,10 @@ def __prep_inputs(x, y, dist):
     if isinstance(dist, numbers.Number) and dist <= 0:
         raise ValueError('dist cannot be a negative integer')
 
-    return x, y
+    if not (b_partial_start or b_partial_end):
+      radius_x = radius
+
+    return x, y, radius_x
 
 
 cdef double __dtw(x, y, vector[WindowElement] &window, dist,
@@ -394,7 +405,7 @@ cdef __reduce_by_half(x):
 cdef __expand_window(PathElement *path, int path_len,
                      x, y, int radius, dist,
                      vector[WindowElement] &window,
-                     b_partial_start):
+                     b_partial_start, int radius_x):
     ''' calculate a window around a path where the expansion is of length
         radius in all directions (including diagonals).
 
@@ -441,20 +452,20 @@ cdef __expand_window(PathElement *path, int path_len,
     ybounds1[max_x_idx].high = prv_y_idx
 
     # step 2
-    cdef int len_ybounds2 = max_x_idx + radius + 1
+    cdef int len_ybounds2 = max_x_idx + radius_x + 1
     cdef vector[LowHigh] ybounds2
     ybounds2.resize(len_ybounds2)
 
     for x_idx in range(max_x_idx + 1):
-        temp_min_x_idx = max(0, x_idx - radius)
+        temp_min_x_idx = max(0, x_idx - radius_x)
         ybounds2[x_idx].low = \
             max(0, ybounds1[temp_min_x_idx].low - radius)
 
-        temp_max_x_idx = min(max_x_idx, x_idx + radius)
+        temp_max_x_idx = min(max_x_idx, x_idx + radius_x)
         ybounds2[x_idx].high = \
             min(max_y_idx + radius, ybounds1[temp_max_x_idx].high + radius)
 
-    for x_idx in range(max_x_idx + 1, max_x_idx + radius + 1):
+    for x_idx in range(max_x_idx + 1, max_x_idx + radius_x + 1):
         ybounds2[x_idx].low = ybounds2[x_idx - 1].low
         ybounds2[x_idx].high = ybounds2[x_idx - 1].high
 
@@ -465,7 +476,7 @@ cdef __expand_window(PathElement *path, int path_len,
 
     cdef int window_size = 0
 
-    for x_idx in range(max_x_idx + radius + 1):
+    for x_idx in range(max_x_idx + radius_x + 1):
         if 2 * x_idx < len_x:
             ybounds3[2 * x_idx].low = 2 * ybounds2[x_idx].low
             ybounds3[2 * x_idx].high = \
