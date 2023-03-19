@@ -12,7 +12,8 @@ except NameError:
     pass
 
 
-def fastdtw(x, y, radius=1, dist=None):
+def fastdtw(x, y, radius=1, dist=None,
+            b_partial_start=False, b_partial_end=False):
     ''' return the approximate distance between 2 time series with O(N)
         time and memory complexity
 
@@ -32,6 +33,14 @@ def fastdtw(x, y, radius=1, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        b_partial_start: bool
+            If True, calculate a partial match where the start of path does
+            not point to the start of x. Otherwise, the start of path points
+            to the start of x.
+        b_partial_end: bool
+            If True, calculate a partial match where the end of path does not
+            point to the end of x. Otherwise, the end of path points to the
+            end of x.
 
         Returns
         -------
@@ -50,7 +59,7 @@ def fastdtw(x, y, radius=1, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
-    return __fastdtw(x, y, radius, dist)
+    return __fastdtw(x, y, radius, dist, b_partial_start, b_partial_end)
 
 
 def __difference(a, b):
@@ -61,19 +70,24 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
 
 
-def __fastdtw(x, y, radius, dist):
+def __fastdtw(x, y, radius, dist, b_partial_start, b_partial_end):
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
-        return dtw(x, y, dist=dist)
+        return dtw(x, y, dist=dist,
+                   b_partial_start=b_partial_start,
+                   b_partial_end=b_partial_end)
 
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
     distance, path = \
-        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
+        __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist,
+                  b_partial_start=b_partial_start,
+                  b_partial_end=b_partial_end)
     window = __expand_window(path, len(x), len(y), radius)
     return __dtw(x, y, window, dist=dist,
-                 b_partial_start=False, b_partial_end=False)
+                 b_partial_start=b_partial_start,
+                 b_partial_end=b_partial_end)
 
 
 def __prep_inputs(x, y, dist):
