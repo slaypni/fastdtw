@@ -13,7 +13,7 @@ except NameError:
 
 
 def fastdtw(x, y, radius=1, dist=None,
-            b_partial_start=False, b_partial_end=False):
+            b_partial_start=False, b_partial_end=False, radius_x=4):
     ''' return the approximate distance between 2 time series with O(N)
         time and memory complexity
 
@@ -41,6 +41,9 @@ def fastdtw(x, y, radius=1, dist=None,
             If True, calculate a partial match where the end of path does not
             point to the end of x. Otherwise, the end of path points to the
             end of x.
+        radius_x: int
+            When b_partial_{start|end} is True, radius_x is used for x-axis
+            calculation instead of radius.
 
         Returns
         -------
@@ -58,8 +61,11 @@ def fastdtw(x, y, radius=1, dist=None,
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    x, y, dist = __prep_inputs(x, y, dist)
-    return __fastdtw(x, y, radius, dist, b_partial_start, b_partial_end)
+    x, y, dist, radius_x = __prep_inputs(x, y, radius, dist,
+                                         b_partial_start, b_partial_end,
+                                         radius_x)
+    return __fastdtw(x, y, radius, dist,
+                     b_partial_start, b_partial_end, radius_x)
 
 
 def __difference(a, b):
@@ -70,10 +76,13 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
 
 
-def __fastdtw(x, y, radius, dist, b_partial_start, b_partial_end):
+def __fastdtw(x, y, radius, dist,
+              b_partial_start, b_partial_end, radius_x):
     min_time_size = radius + 2
+    min_time_size_x = radius_x + 2 if b_partial_start or b_partial_end \
+        else min_time_size
 
-    if len(x) < min_time_size or len(y) < min_time_size:
+    if len(x) < min_time_size_x or len(y) < min_time_size:
         return dtw(x, y, dist=dist,
                    b_partial_start=b_partial_start,
                    b_partial_end=b_partial_end)
@@ -83,14 +92,16 @@ def __fastdtw(x, y, radius, dist, b_partial_start, b_partial_end):
     distance, path = \
         __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist,
                   b_partial_start=b_partial_start,
-                  b_partial_end=b_partial_end)
-    window = __expand_window(path, len(x), len(y), radius)
+                  b_partial_end=b_partial_end,
+                  radius_x=radius_x)
+    window = __expand_window(path, len(x), len(y), radius, radius_x)
     return __dtw(x, y, window, dist=dist,
                  b_partial_start=b_partial_start,
                  b_partial_end=b_partial_end)
 
 
-def __prep_inputs(x, y, dist):
+def __prep_inputs(x, y, radius, dist,
+                  b_partial_start, b_partial_end, radius_x):
     x = np.asanyarray(x, dtype='float')
     y = np.asanyarray(y, dtype='float')
 
@@ -107,7 +118,10 @@ def __prep_inputs(x, y, dist):
     elif isinstance(dist, numbers.Number):
         dist = __norm(p=dist)
 
-    return x, y, dist
+    if not (b_partial_start or b_partial_end):
+        radius_x = radius
+
+    return x, y, dist, radius_x
 
 
 def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
@@ -149,7 +163,9 @@ def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    x, y, dist = __prep_inputs(x, y, dist)
+    x, y, dist, _ = __prep_inputs(x, y, None, dist,
+                                  b_partial_start, b_partial_end,
+                                  None)
     return __dtw(x, y, None, dist, b_partial_start, b_partial_end)
 
 
@@ -189,13 +205,14 @@ def __reduce_by_half(x):
     return [(x[i] + x[1+i]) / 2 for i in range(0, len(x) - len(x) % 2, 2)]
 
 
-def __expand_window(path, len_x, len_y, radius):
+def __expand_window(path, len_x, len_y, radius, radius_x):
     path_ = set(path)
     for i, j in path:
         for a, b in ((i + a, j + b)
                      for a in range(-radius, radius+1)
-                     for b in range(-radius, radius+1)):
-            path_.add((a, b))
+                     for b in range(-radius_x, radius_x+1)):
+            if a >= 0 and b >= 0:
+                path_.add((a, b))
 
     window_ = set()
     for i, j in path_:
