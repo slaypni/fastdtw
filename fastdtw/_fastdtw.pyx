@@ -31,7 +31,8 @@ cdef struct PathElement:
     int x_idx, y_idx
 
 
-def fastdtw(x, y, int radius=1, dist=None):
+def fastdtw(x, y, int radius=1, dist=None,
+            b_partial_start=False, b_partial_end=False):
     ''' return the approximate distance between 2 time series with O(N)
         time and memory complexity
 
@@ -51,6 +52,14 @@ def fastdtw(x, y, int radius=1, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        b_partial_start: bool
+            If True, calculate a partial match where the start of path does
+            not point to the start of x. Otherwise, the start of path points
+            to the start of x.
+        b_partial_end: bool
+            If True, calculate a partial match where the end of path does not
+            point to the end of x. Otherwise, the end of path points to the
+            end of x.
 
         Returns
         -------
@@ -83,7 +92,8 @@ def fastdtw(x, y, int radius=1, dist=None):
         <PathElement *>PyMem_Malloc((len(x) + len(y) - 1) *
                                     sizeof(PathElement)))
     cdef int path_len = 0, i
-    cost = __fastdtw(x, y, radius, dist, path, path_len)
+    cost = __fastdtw(x, y, radius, dist, path, path_len,
+                     b_partial_start, b_partial_end)
 
     path_lst = []
     if path != NULL:
@@ -94,14 +104,17 @@ def fastdtw(x, y, int radius=1, dist=None):
 
 
 cdef double __fastdtw(x, y, int radius, dist,
-                      PathElement *path, int &path_len) except? -1:
+                      PathElement *path, int &path_len,
+                      b_partial_start, b_partial_end) except? -1:
     cdef int min_time_size
     cdef double cost
 
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
-        cost, path_lst = dtw(x, y, dist=dist)
+        cost, path_lst = dtw(x, y, dist=dist,
+                             b_partial_start=b_partial_start,
+                             b_partial_end=b_partial_end)
         (&path_len)[0] = len(path_lst)
         for i in range((&path_len)[0]):
             path[i].x_idx = path_lst[i][0]
@@ -111,12 +124,14 @@ cdef double __fastdtw(x, y, int radius, dist,
 
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
-    distance = __fastdtw(x_shrinked, y_shrinked, radius, dist, path, path_len)
+    distance = __fastdtw(x_shrinked, y_shrinked, radius, dist, path, path_len,
+                         b_partial_start, b_partial_end)
 
     cdef vector[WindowElement] window
-    __expand_window(path, path_len, x, y, radius, dist, window)
+    __expand_window(path, path_len, x, y, radius, dist, window,
+                    b_partial_start)
     return __dtw(x, y, window, dist, path, path_len,
-                 b_partial_start=False, b_partial_end=False)
+                 b_partial_start, b_partial_end)
 
 
 def dtw(x, y, dist=None, b_partial_start=False, b_partial_end=False):
@@ -378,7 +393,8 @@ cdef __reduce_by_half(x):
 
 cdef __expand_window(PathElement *path, int path_len,
                      x, y, int radius, dist,
-                     vector[WindowElement] &window):
+                     vector[WindowElement] &window,
+                     b_partial_start):
     ''' calculate a window around a path where the expansion is of length
         radius in all directions (including diagonals).
 
@@ -480,7 +496,7 @@ cdef __expand_window(PathElement *path, int path_len,
             we.x_idx = x_idx
             we.y_idx = y_idx
 
-            if x_idx == 0 and y_idx == 0:
+            if (b_partial_start or x_idx == 0) and y_idx == 0:
                 we.cost_idx_up = -1
                 we.cost_idx_left = -1
                 we.cost_idx_corner = 0
