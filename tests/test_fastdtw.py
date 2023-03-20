@@ -27,16 +27,20 @@ class FastdtwTest(unittest.TestCase):
         self.expected_path_partial_both = [(1, 0), (2, 1), (3, 2)]
 
     def test_1d_fastdtw(self):
-        distance_c = fastdtw_c(self.x_1d, self.y_1d)[0]
-        distance_p = fastdtw_p(self.x_1d, self.y_1d)[0]
+        distance_c, path_c = fastdtw_c(self.x_1d, self.y_1d)
+        distance_p, path_p = fastdtw_p(self.x_1d, self.y_1d)
         self.assertEqual(distance_c, 2)
         self.assertEqual(distance_c, distance_p)
+        self.assertEqual(path_c, self.expected_path_full)
+        self.assertEqual(path_c, path_p)
 
     def test_1d_dtw(self):
-        distance_c = dtw_c(self.x_1d, self.y_1d)[0]
-        distance_p = dtw_p(self.x_1d, self.y_1d)[0]
+        distance_c, path_c = dtw_c(self.x_1d, self.y_1d)
+        distance_p, path_p = dtw_p(self.x_1d, self.y_1d)
         self.assertEqual(distance_c, 2)
         self.assertEqual(distance_c, distance_p)
+        self.assertEqual(path_c, self.expected_path_full)
+        self.assertEqual(path_c, path_p)
 
     def test_1d_fastdtw_partial_start(self):
         distance_c, path_c = fastdtw_c(self.x_1d, self.y_1d,
@@ -103,10 +107,12 @@ class FastdtwTest(unittest.TestCase):
         self.assertEqual(path_c, path_p)
 
     def test_2d_fastdtw(self):
-        distance_c = fastdtw_c(self.x_2d, self.y_2d, dist=self.dist_2d)[0]
-        distance_p = fastdtw_p(self.x_2d, self.y_2d, dist=self.dist_2d)[0]
+        distance_c, path_c = fastdtw_c(self.x_2d, self.y_2d, dist=self.dist_2d)
+        distance_p, path_p = fastdtw_p(self.x_2d, self.y_2d, dist=self.dist_2d)
         self.assertAlmostEqual(distance_c, ((1+1)**0.5)*2)
         self.assertEqual(distance_c, distance_p)
+        self.assertEqual(path_c, self.expected_path_full)
+        self.assertEqual(path_c, path_p)
 
     def test_2d_fastdtw_partial_start(self):
         distance_c, path_c = fastdtw_c(self.x_2d, self.y_2d,
