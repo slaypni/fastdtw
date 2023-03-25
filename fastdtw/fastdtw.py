@@ -49,7 +49,6 @@ def fastdtw(x, y, radius=1, dist=None):
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    
     x, y, dist = __prep_inputs(x, y, dist)
     return __fastdtw(x, y, radius, dist)
 
@@ -130,7 +129,6 @@ def dtw(x, y, dist=None):
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
-    
     x, y, dist = __prep_inputs(x, y, dist)
     return __dtw(x, y, None, dist)
 
