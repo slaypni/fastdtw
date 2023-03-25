@@ -49,6 +49,7 @@ def fastdtw(x, y, radius=1, dist=None):
         >>> fastdtw.fastdtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
+    
     x, y, dist = __prep_inputs(x, y, dist)
     return __fastdtw(x, y, radius, dist)
 
@@ -62,6 +63,9 @@ def __norm(p):
 
 
 def __fastdtw(x, y, radius, dist):
+    if not np.issubdtype(x.dtype, np.floating) or not np.issubdtype(y.dtype, np.floating):
+        return dtw(x, y, dist=dist)
+    
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
@@ -76,8 +80,8 @@ def __fastdtw(x, y, radius, dist):
 
 
 def __prep_inputs(x, y, dist):
-    x = np.asanyarray(x, dtype='float')
-    y = np.asanyarray(y, dtype='float')
+    x = np.asanyarray(x, dtype='str' if isinstance(y[0], str) else 'float')
+    y = np.asanyarray(y, dtype='str' if isinstance(y[0], str) else 'float')
 
     if x.ndim == y.ndim > 1 and x.shape[1] != y.shape[1]:
         raise ValueError('second dimension of x and y must be the same')
@@ -126,6 +130,7 @@ def dtw(x, y, dist=None):
         >>> fastdtw.dtw(x, y)
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
+    
     x, y, dist = __prep_inputs(x, y, dist)
     return __dtw(x, y, None, dist)
 
