@@ -111,6 +111,7 @@ cdef double __fastdtw(x, y, int radius, dist,
                       PathElement *path, int &path_len,
                       b_partial_start, b_partial_end, int radius_x) except? -1:
     cdef int min_time_size
+    cdef int min_time_size_x
     cdef double cost
 
     min_time_size = radius + 2
