@@ -209,8 +209,8 @@ def __expand_window(path, len_x, len_y, radius, radius_x):
     path_ = set(path)
     for i, j in path:
         for a, b in ((i + a, j + b)
-                     for a in range(-radius, radius+1)
-                     for b in range(-radius_x, radius_x+1)):
+                     for a in range(-radius_x, radius_x+1)
+                     for b in range(-radius, radius+1)):
             if a >= 0 and b >= 0:
                 path_.add((a, b))
 
