@@ -421,6 +421,7 @@ cdef __expand_window(PathElement *path, int path_len,
     '''
 
     cdef int max_x_idx, max_y_idx, prv_y_idx, cur_x_idx, x_idx, y_idx, idx
+    cdef int min_x_idx, min_y_idx
     cdef int low_y_idx, hgh_y_idx
     cdef WindowElement we
 
@@ -428,6 +429,8 @@ cdef __expand_window(PathElement *path, int path_len,
     len_x, len_y = len(x), len(y)
 
     # step 1
+    min_x_idx = path[0].x_idx
+    min_y_idx = path[0].y_idx
     max_x_idx = path[path_len - 1].x_idx
     max_y_idx = path[path_len - 1].y_idx
 
@@ -453,12 +456,22 @@ cdef __expand_window(PathElement *path, int path_len,
     ybounds1[max_x_idx].high = prv_y_idx
 
     # step 2
-    cdef int len_ybounds2 = max_x_idx + radius_x + 1
+    cdef int min_x_expanded_idx = max(0, min_x_idx - radius_x)
+    cdef int max_x_expanded_idx = max_x_idx + radius_x
+
+    cdef int len_ybounds2 = max_x_expanded_idx + 1
     cdef vector[LowHigh] ybounds2
     ybounds2.resize(len_ybounds2)
 
-    for x_idx in range(max_x_idx + 1):
-        temp_min_x_idx = max(0, x_idx - radius_x)
+    for x_idx in range(min_x_expanded_idx, min_x_idx):
+        ybounds2[x_idx].low = 0
+
+        temp_max_x_idx = min(max_x_idx, x_idx + radius_x)
+        ybounds2[x_idx].high = \
+            min(max_y_idx + radius, ybounds1[temp_max_x_idx].high + radius)
+
+    for x_idx in range(min_x_idx, max_x_idx + 1):
+        temp_min_x_idx = max(min_x_idx, x_idx - radius_x)
         ybounds2[x_idx].low = \
             max(0, ybounds1[temp_min_x_idx].low - radius)
 
@@ -466,8 +479,11 @@ cdef __expand_window(PathElement *path, int path_len,
         ybounds2[x_idx].high = \
             min(max_y_idx + radius, ybounds1[temp_max_x_idx].high + radius)
 
-    for x_idx in range(max_x_idx + 1, max_x_idx + radius_x + 1):
-        ybounds2[x_idx].low = ybounds2[x_idx - 1].low
+    for x_idx in range(max_x_idx + 1, max_x_expanded_idx + 1):
+        temp_min_x_idx = max(min_x_idx, x_idx - radius_x)
+        ybounds2[x_idx].low = \
+            max(0, ybounds1[temp_min_x_idx].low - radius)
+
         ybounds2[x_idx].high = ybounds2[x_idx - 1].high
 
     # step 3
@@ -477,7 +493,7 @@ cdef __expand_window(PathElement *path, int path_len,
 
     cdef int window_size = 0
 
-    for x_idx in range(max_x_idx + radius_x + 1):
+    for x_idx in range(min_x_expanded_idx, max_x_expanded_idx + 1):
         if 2 * x_idx < len_x:
             ybounds3[2 * x_idx].low = 2 * ybounds2[x_idx].low
             ybounds3[2 * x_idx].high = \
@@ -495,10 +511,13 @@ cdef __expand_window(PathElement *path, int path_len,
                 ybounds3[2 * x_idx + 1].high - ybounds3[2 * x_idx + 1].low + 1
 
     # step 4
+    cdef int min_x_doubled_idx = 2 * min_x_expanded_idx
+    cdef int max_x_doubled_idx = min(len_ybounds3 - 1,
+                                     2 * max_x_expanded_idx + 1)
     window.resize(window_size)
 
     idx = 0
-    for x_idx in range(len_ybounds3):
+    for x_idx in range(min_x_doubled_idx, max_x_doubled_idx + 1):
 
         low_y_idx = ybounds3[x_idx].low
         hgh_y_idx = ybounds3[x_idx].high
