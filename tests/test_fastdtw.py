@@ -7,8 +7,8 @@ import unittest
 
 import numpy as np
 
-from fastdtw._fastdtw import fastdtw as fastdtw_c
-from fastdtw._fastdtw import dtw as dtw_c
+# from fastdtw._fastdtw import fastdtw as fastdtw_c
+# from fastdtw._fastdtw import dtw as dtw_c
 from fastdtw.fastdtw import fastdtw as fastdtw_p
 from fastdtw.fastdtw import dtw as dtw_p
 
@@ -29,7 +29,7 @@ class FastdtwTest(unittest.TestCase):
 
     def test_1d_dtw(self):
         distance_c = dtw_c(self.x_1d, self.y_1d)[0]
-        distance_p = dtw_p(self.x_1d, self.y_1d)[0]
+        c
         self.assertEqual(distance_c, 2)
         self.assertEqual(distance_c, distance_p)
 
@@ -54,6 +54,16 @@ class FastdtwTest(unittest.TestCase):
         self.assertEqual(d1, d2)
         self.assertEqual(d1, d3)
         self.assertEqual(d1, d4)
+    
+    def test_fastdtw_dist_only(self):
+        d1, p1 = fastdtw_p([[1,2]], [[2,2],[1,1]], dist_only=True)
+        d2, p2 = dtw_p([[1,2]], [[2,2],[1,1]], dist_only=True)
+        # Check paths were not generated
+        self.assertEqual(p1, None)
+        self.assertEqual(p2, None)
+        # Check distances
+        self.assertEqual(d1, 2)
+        self.assertEqual(d2, 2)
 
 if __name__ == '__main__':
     unittest.main()

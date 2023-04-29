@@ -12,7 +12,7 @@ except NameError:
     pass
 
 
-def fastdtw(x, y, radius=1, dist=None):
+def fastdtw(x, y, radius=1, dist=None, dist_only=False):
     ''' return the approximate distance between 2 time series with O(N)
         time and memory complexity
 
@@ -32,13 +32,17 @@ def fastdtw(x, y, radius=1, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        dist_only : bool
+            If you are only interested in the distance metric for DTW, set the
+            value too True and it will not return a path
 
         Returns
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list
-            list of indexes for the inputs x and y
+        path : list or None
+            list of indexes for the inputs x and y 
+            (If dist_only is set to True then the path will be None)
 
         Examples
         --------
@@ -50,7 +54,7 @@ def fastdtw(x, y, radius=1, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
-    return __fastdtw(x, y, radius, dist)
+    return __fastdtw(x, y, radius, dist, dist_only)
 
 
 def __difference(a, b):
@@ -61,18 +65,18 @@ def __norm(p):
     return lambda a, b: np.linalg.norm(np.atleast_1d(a) - np.atleast_1d(b), p)
 
 
-def __fastdtw(x, y, radius, dist):
+def __fastdtw(x, y, radius, dist, dist_only):
     min_time_size = radius + 2
 
     if len(x) < min_time_size or len(y) < min_time_size:
-        return dtw(x, y, dist=dist)
+        return dtw(x, y, dist=dist, dist_only=dist_only)
 
     x_shrinked = __reduce_by_half(x)
     y_shrinked = __reduce_by_half(y)
     distance, path = \
         __fastdtw(x_shrinked, y_shrinked, radius=radius, dist=dist)
     window = __expand_window(path, len(x), len(y), radius)
-    return __dtw(x, y, window, dist=dist)
+    return __dtw(x, y, window, dist=dist, dist_only=dist_only)
 
 
 def __prep_inputs(x, y, dist):
@@ -95,7 +99,7 @@ def __prep_inputs(x, y, dist):
     return x, y, dist
 
 
-def dtw(x, y, dist=None):
+def dtw(x, y, dist=None, dist_only=False):
     ''' return the distance between 2 time series without approximation
 
         Parameters
@@ -109,13 +113,17 @@ def dtw(x, y, dist=None):
             dist is an int of value p > 0, then the p-norm will be used. If
             dist is a function then dist(x[i], y[j]) will be used. If dist is
             None then abs(x[i] - y[j]) will be used.
+        dist_only : bool
+            If you are only interested in the distance metric for DTW, set the
+            value too True and it will not return a path
 
         Returns
         -------
         distance : float
             the approximate distance between the 2 time series
-        path : list
-            list of indexes for the inputs x and y
+        path : list or None
+            list of indexes for the inputs x and y 
+            (If dist_only is set to True then the path will be None)
 
         Examples
         --------
@@ -127,10 +135,10 @@ def dtw(x, y, dist=None):
         (2.0, [(0, 0), (1, 0), (2, 1), (3, 2), (4, 2)])
     '''
     x, y, dist = __prep_inputs(x, y, dist)
-    return __dtw(x, y, None, dist)
+    return __dtw(x, y, None, dist, dist_only)
 
 
-def __dtw(x, y, window, dist):
+def __dtw(x, y, window, dist, dist_only):
     len_x, len_y = len(x), len(y)
     if window is None:
         window = [(i, j) for i in range(len_x) for j in range(len_y)]
@@ -141,12 +149,16 @@ def __dtw(x, y, window, dist):
         dt = dist(x[i-1], y[j-1])
         D[i, j] = min((D[i-1, j][0]+dt, i-1, j), (D[i, j-1][0]+dt, i, j-1),
                       (D[i-1, j-1][0]+dt, i-1, j-1), key=lambda a: a[0])
-    path = []
-    i, j = len_x, len_y
-    while not (i == j == 0):
-        path.append((i-1, j-1))
-        i, j = D[i, j][1], D[i, j][2]
-    path.reverse()
+    
+    path = None
+    if not dist_only:
+        path = []
+        i, j = len_x, len_y
+        while not (i == j == 0):
+            path.append((i-1, j-1))
+            i, j = D[i, j][1], D[i, j][2]
+        path.reverse()
+    
     return (D[len_x, len_y][0], path)
 
 
