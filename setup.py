@@ -4,11 +4,15 @@ from setuptools.command.build_ext import build_ext as _build_ext
 import sys
 import warnings
 
+
+VERSION_BASE = "0.3.4"
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True
+    VERSION = f"{VERSION_BASE}+cython"
 except ImportError:
     USE_CYTHON = False
+    VERSION = f"{VERSION_BASE}+raw"
 
 # numpy path is needed for building with and without cython:
 try:
@@ -61,7 +65,7 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 kwargs = {
     'name': 'fastdtw',
-    'version': '0.3.4',
+    'version': VERSION,
     'author': 'Kazuaki Tanida',
     'url': 'https://github.com/slaypni/fastdtw',
     'description': 'Dynamic Time Warping (DTW) algorithm with an O(N) time and memory complexity.',
